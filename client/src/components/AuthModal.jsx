@@ -53,15 +53,24 @@ export default function AuthModal() {
         if (password.length < 6) {
           throw new Error('Password must be at least 6 characters');
         }
-        await register({
+        const res = await register({
           email,
           password,
           fullName,
           role: selectedRole,
         });
+        if (res?.needsConfirmation) {
+          setActiveTab('signin');
+          setErrorMsg('Account registered! Please enter your password to sign in.');
+        }
       }
     } catch (err) {
-      setErrorMsg(err.message || 'Authentication failed. Please check your details.');
+      if (err.message && err.message.toLowerCase().includes('already registered')) {
+        setActiveTab('signin');
+        setErrorMsg('This account is already registered! Enter your password below to sign in.');
+      } else {
+        setErrorMsg(err.message || 'Authentication failed. Please check your details.');
+      }
     } finally {
       setIsSubmitting(false);
     }

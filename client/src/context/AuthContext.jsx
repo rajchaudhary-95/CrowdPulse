@@ -77,6 +77,21 @@ export function AuthProvider({ children }) {
         setUser(parseUser(data.user));
         setIsAuthModalOpen(false);
         setIntendedRoleRequired(null);
+        return data;
+      } else if (data?.user) {
+        // Automatically attempt immediate sign in
+        try {
+          const loginData = await authSignIn({ email, password });
+          if (loginData?.session) {
+            setSession(loginData.session);
+            setUser(parseUser(loginData.user));
+            setIsAuthModalOpen(false);
+            setIntendedRoleRequired(null);
+            return loginData;
+          }
+        } catch {
+          return { needsConfirmation: true, user: data.user };
+        }
       }
       return data;
     } finally {
