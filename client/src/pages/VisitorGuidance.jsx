@@ -1,7 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { Compass, Clock, Navigation, CheckCircle, AlertCircle, ArrowRight, ShieldCheck, MapPin, Sparkles } from 'lucide-react';
+import {
+  Compass,
+  Clock,
+  Navigation,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
+  ShieldCheck,
+  MapPin,
+  Sparkles,
+  Utensils,
+  Coffee,
+  TreePine,
+  Tv,
+  Footprints,
+  ChevronRight,
+  Bookmark
+} from 'lucide-react';
 import MapView from '../components/MapView';
 import { fetchRouteRecommendation } from '../services/api';
+
+// Traffic light status helper
+function getTrafficLight(stressScore) {
+  if (stressScore >= 80) {
+    return {
+      dot: '🔴',
+      label: 'Heavy Congestion',
+      color: '#ef4444',
+      bg: 'rgba(239, 68, 68, 0.12)',
+      advice: 'Long entry queues (15-20 min wait). Consider delaying transit.',
+    };
+  }
+  if (stressScore >= 60) {
+    return {
+      dot: '🟡',
+      label: 'Moderate Traffic',
+      color: '#f59e0b',
+      bg: 'rgba(245, 158, 11, 0.12)',
+      advice: 'Steady movement with short wait times at checkpoints (4-7 min).',
+    };
+  }
+  return {
+    dot: '🟢',
+    label: 'Smooth & Clear',
+    color: '#10b981',
+    bg: 'rgba(16, 185, 129, 0.12)',
+    advice: 'No lines! Turnstiles and concourses are flowing freely.',
+  };
+}
 
 export default function VisitorGuidance({
   zones = [],
@@ -14,6 +60,8 @@ export default function VisitorGuidance({
   const [destZoneId, setDestZoneId] = useState('zone-main-arena');
   const [routePlan, setRoutePlan] = useState(null);
   const [loadingRoute, setLoadingRoute] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('all'); // 'all' | 'food' | 'rest' | 'screens'
+  const [savedSpots, setSavedSpots] = useState({});
 
   // Auto-fetch route recommendation when origin or destination changes
   useEffect(() => {
@@ -37,61 +85,78 @@ export default function VisitorGuidance({
     return () => { isMounted = false; };
   }, [originZoneId, destZoneId]);
 
-  // Find lowest stress alternate zone
-  const recommendedZones = [...zones].sort(
-    (a, b) => (a.liveMetrics?.compositeStressScore || 0) - (b.liveMetrics?.compositeStressScore || 0)
-  );
-  const topComfortZone = recommendedZones[0];
+  const toggleSaveSpot = (zoneId) => {
+    setSavedSpots((prev) => ({
+      ...prev,
+      [zoneId]: !prev[zoneId],
+    }));
+  };
 
-  // Attendee recommendations generated from LP solver
-  const visitorTips = recommendations.filter((r) => r.targetAudience === 'visitor');
+  // Curated category recommendations
+  const categorySpots = {
+    food: [
+      { name: 'Grand Concourse Food Promenade', zoneId: 'zone-promenade', wait: '< 4 min wait', desc: 'Craft food trucks, quick refreshment stations & hydration taps' },
+      { name: 'Fan Festival Village Food Court', zoneId: 'zone-fan-park', wait: '< 6 min wait', desc: 'Covered seating and rapid festival dining stalls' },
+    ],
+    rest: [
+      { name: 'Olympic Village Shaded Lawn', zoneId: 'zone-fan-park', wait: 'Open seating', desc: 'Quiet relaxation lawn with cooling misters and restrooms' },
+      { name: 'North Aquatic Gardens', zoneId: 'zone-north-courts', wait: 'Uncrowded', desc: 'Scenic shaded walk with zero congestion' },
+    ],
+    screens: [
+      { name: 'Live Symphony Giant LED Wall', zoneId: 'zone-fan-park', wait: 'Free Entry', desc: 'High-definition 4K stadium broadcast with surround sound' },
+    ],
+  };
 
   return (
     <div className="visitor-container">
-      {/* 1. Hero Guidance Banner */}
+      {/* 1. Hero Travel Advisory Banner */}
       <div className="visitor-hero glass-panel">
         <div className="hero-left">
           <div className="hero-badge">
-            <Compass size={16} /> ATTENDEE REAL-TIME TRAVEL ADVISOR
+            <Compass size={15} /> VISITOR LIVE COMPANION
           </div>
-          <h2 className="hero-title">Plan Your Visit Around the Crowd</h2>
+          <h2 className="hero-title">Navigate Without the Crowds</h2>
           <p className="hero-subtitle">
-            Live AI-powered crowd forecasting guides you away from peak stadium turnstiles towards comfortable viewing zones and optimal travel windows.
+            Real-time crowd intelligence finds open walkways and tells you the best time to move between venues.
           </p>
         </div>
 
-        <div className="hero-status-card">
-          <span className="status-kicker">Recommended Travel Window</span>
-          <div className="window-time-row">
-            <Clock size={20} className="text-cyan" />
-            <span className="window-time">Immediate &mdash; Next 40 Mins</span>
+        {/* Intuitive Traffic Light Summary Card */}
+        <div className="hero-travel-window-card">
+          <div className="window-header">
+            <Clock size={16} className="text-cyan" />
+            <span className="window-title">Optimal Travel Window</span>
           </div>
-          <span className="status-note">
-            &bull; Peak stadium track finals surge starts in ~50 minutes.
-          </span>
+          <div className="window-status-row">
+            <span className="window-badge">🟢 Right Now &mdash; Next 35 Mins</span>
+          </div>
+          <p className="window-hint">
+            Stadium track finals wrap up in ~45 mins. Leave now to reach transit before the main egress rush!
+          </p>
         </div>
       </div>
 
       {/* 2. Main Two-Column Layout */}
       <div className="visitor-grid">
-        {/* Left Column: Route Planner & Alternate Recommendations */}
+        {/* Left Column: Friction-Free Route Finder & Quick Spots */}
         <div className="planner-column">
           {/* Smart Route Planner Card */}
           <div className="route-card glass-panel">
-            <div className="route-header">
-              <div className="icon-badge">
+            <div className="route-card-header">
+              <div className="route-icon-badge">
                 <Navigation size={18} className="text-cyan" />
               </div>
               <div>
-                <h3 className="card-title">Live Crowd-Aware Route Planner</h3>
-                <span className="card-subtitle">Real-time transit delays and concourse crowding</span>
+                <h3 className="card-title">Where Are You Heading?</h3>
+                <span className="card-subtitle">Choose your stops to find the smoothest walking path</span>
               </div>
             </div>
 
+            {/* Quick Origin & Destination Selector */}
             <div className="selector-grid">
               <div className="selector-group">
                 <label className="selector-label">
-                  <MapPin size={13} /> Starting Location
+                  <MapPin size={13} className="text-cyan" /> I am currently at:
                 </label>
                 <select
                   id="origin-zone-select"
@@ -99,17 +164,21 @@ export default function VisitorGuidance({
                   value={originZoneId}
                   onChange={(e) => setOriginZoneId(e.target.value)}
                 >
-                  {zones.map((z) => (
-                    <option key={z._id} value={z._id}>
-                      {z.name} ({z.liveMetrics?.compositeStressScore}% stress)
-                    </option>
-                  ))}
+                  {zones.map((z) => {
+                    const zid = z._id || z.id;
+                    const tl = getTrafficLight(z.liveMetrics?.compositeStressScore || 0);
+                    return (
+                      <option key={zid} value={zid}>
+                        {tl.dot} {z.name}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
               <div className="selector-group">
                 <label className="selector-label">
-                  <MapPin size={13} /> Destination
+                  <Navigation size={13} className="text-primary" /> I want to go to:
                 </label>
                 <select
                   id="dest-zone-select"
@@ -117,102 +186,201 @@ export default function VisitorGuidance({
                   value={destZoneId}
                   onChange={(e) => setDestZoneId(e.target.value)}
                 >
-                  {zones.map((z) => (
-                    <option key={z._id} value={z._id}>
-                      {z.name} ({z.liveMetrics?.compositeStressScore}% stress)
-                    </option>
-                  ))}
+                  {zones.map((z) => {
+                    const zid = z._id || z.id;
+                    const tl = getTrafficLight(z.liveMetrics?.compositeStressScore || 0);
+                    return (
+                      <option key={zid} value={zid} disabled={zid === originZoneId}>
+                        {tl.dot} {z.name}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
 
-            {/* Route Results */}
-            {originZoneId === destZoneId ? (
-              <div className="route-info-box">
-                <p>You are already in this zone! Explore local dining and exhibition halls below.</p>
+            {/* Route Results Comparison */}
+            {loadingRoute ? (
+              <div className="route-loading">
+                <div className="loading-spinner" />
+                <span>Checking concourse crowding and live turnstiles...</span>
               </div>
             ) : routePlan ? (
-              <div className="route-results-wrap">
-                <div className="route-option primary">
-                  <div className="option-top">
-                    <span className="route-badge direct">DIRECT TRANSIT</span>
-                    <span className="route-eta">{routePlan.primaryRoute?.estimatedMinutes} mins</span>
-                  </div>
-                  <h4 className="route-corridor">{routePlan.primaryRoute?.edgeName}</h4>
-                  <div className="route-meta">
-                    <span>Mode: <strong>{routePlan.primaryRoute?.mode?.replace('_', ' ').toUpperCase()}</strong></span>
-                    <span>&bull;</span>
-                    <span className={`rating ${routePlan.primaryRoute?.crowdednessRating?.includes('High') ? 'high' : 'good'}`}>
-                      {routePlan.primaryRoute?.crowdednessRating}
-                    </span>
-                  </div>
-                </div>
-
+              <div className="route-options-container">
+                {/* Recommended Alternate Route (Crowd-Free) */}
                 {routePlan.alternateRecommendation && (
-                  <div className="route-option alternate">
-                    <div className="option-top">
-                      <span className="route-badge smart">
-                        <Sparkles size={11} /> AI RECOMMENDATION
-                      </span>
-                      <span className="relief-tag">Save ~15 min</span>
+                  <div className="route-option-card recommended">
+                    <div className="route-option-badge">
+                      <Sparkles size={13} />
+                      <span>RECOMMENDED &bull; CROWD-FREE PATH</span>
                     </div>
-                    <h4 className="route-corridor">Visit {routePlan.alternateRecommendation.zoneName} Instead</h4>
-                    <p className="alternate-reason">{routePlan.alternateRecommendation.reason}</p>
-                    <div className="alternate-action-row">
-                      <span className="comfort-score">Comfort Index: {100 - routePlan.alternateRecommendation.stressScore}%</span>
-                      <button
-                        className="btn-secondary btn-sm"
-                        onClick={() => setDestZoneId(routePlan.alternateRecommendation.zoneId)}
-                      >
-                        Switch Destination <ArrowRight size={13} />
-                      </button>
+
+                    <div className="route-option-body">
+                      <div className="route-time-stat">
+                        <span className="route-minutes font-num text-success">
+                          {routePlan.alternateRecommendation.estimatedMinutes} min
+                        </span>
+                        <span className="route-comfort-pill">🟢 Open Walkway</span>
+                      </div>
+
+                      <div className="route-details">
+                        <p className="route-path-name">
+                          Via {routePlan.alternateRecommendation.corridorName}
+                        </p>
+                        <p className="route-path-desc">
+                          {routePlan.alternateRecommendation.reason}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Direct Route */}
+                {routePlan.primaryRoute && (
+                  <div className="route-option-card direct">
+                    <div className="route-option-header-sub">
+                      <span className="direct-label">Fastest Direct Route:</span>
+                      <span className={`crowd-badge ${routePlan.primaryRoute.crowdednessRating}`}>
+                        {routePlan.primaryRoute.crowdednessRating}
+                      </span>
+                    </div>
+
+                    <div className="route-option-body">
+                      <div className="route-time-stat">
+                        <span className="route-minutes font-num">
+                          {routePlan.primaryRoute.estimatedMinutes} min
+                        </span>
+                      </div>
+                      <div className="route-details">
+                        <p className="route-path-name">{routePlan.primaryRoute.edgeName}</p>
+                        <p className="route-path-desc">
+                          {routePlan.primaryRoute.crowdNote || 'Direct route through standard concourse gates.'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="route-loading">Calculating optimal path...</div>
+              <div className="route-prompt">
+                <Footprints size={24} className="text-muted" />
+                <p>Select different start and destination venues to see live walking times.</p>
+              </div>
             )}
           </div>
 
-          {/* "Skip the Queues" Alternate Zones Card */}
-          <div className="alternate-zones-card glass-panel">
-            <div className="card-top-row">
-              <h3 className="card-title">Skip the Queues: Uncrowded Fan Zones</h3>
-              <span className="badge badge-normal">Open Availability</span>
-            </div>
-            <p className="card-subtitle">
-              Avoid stadium concourse bottlenecks. These adjacent clusters have live megascreens, open food pavilions, and under 50% capacity:
-            </p>
+          {/* Skip the Queues & Venue Quick Cards */}
+          <div className="spots-card glass-panel">
+            <div className="spots-header">
+              <div className="spots-title-group">
+                <Sparkles size={17} className="text-cyan" />
+                <h3 className="card-title">Skip the Queues Nearby</h3>
+              </div>
 
-            <div className="zones-list">
-              {recommendedZones.slice(0, 3).map((z) => {
-                const stress = z.liveMetrics?.compositeStressScore || 0;
-                return (
-                  <div key={z._id} className="zone-rec-item">
-                    <div className="zone-rec-left">
-                      <span className="zone-rec-name">{z.name}</span>
-                      <span className="zone-rec-cat">{z.category.replace('_', ' ').toUpperCase()}</span>
+              {/* Category Filter Chips */}
+              <div className="category-chips">
+                <button
+                  className={`chip ${activeCategory === 'all' ? 'active' : ''}`}
+                  onClick={() => setActiveCategory('all')}
+                >
+                  All Zones
+                </button>
+                <button
+                  className={`chip ${activeCategory === 'food' ? 'active' : ''}`}
+                  onClick={() => setActiveCategory('food')}
+                >
+                  <Utensils size={12} /> Food
+                </button>
+                <button
+                  className={`chip ${activeCategory === 'rest' ? 'active' : ''}`}
+                  onClick={() => setActiveCategory('rest')}
+                >
+                  <TreePine size={12} /> Chill Spots
+                </button>
+                <button
+                  className={`chip ${activeCategory === 'screens' ? 'active' : ''}`}
+                  onClick={() => setActiveCategory('screens')}
+                >
+                  <Tv size={12} /> Big Screens
+                </button>
+              </div>
+            </div>
+
+            {/* Spots List */}
+            <div className="spots-list">
+              {activeCategory === 'all' ? (
+                zones.map((zone) => {
+                  const zid = zone._id || zone.id;
+                  const tl = getTrafficLight(zone.liveMetrics?.compositeStressScore || 0);
+                  const isSaved = Boolean(savedSpots[zid]);
+
+                  return (
+                    <div key={zid} className="spot-item-card">
+                      <div className="spot-item-top">
+                        <div className="spot-name-group">
+                          <span className="spot-traffic-dot">{tl.dot}</span>
+                          <div>
+                            <h4 className="spot-name">{zone.name}</h4>
+                            <span className="spot-traffic-label" style={{ color: tl.color }}>
+                              {tl.label}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          className={`bookmark-btn ${isSaved ? 'saved' : ''}`}
+                          onClick={() => toggleSaveSpot(zid)}
+                          title="Save to My Event"
+                        >
+                          <Bookmark size={15} />
+                        </button>
+                      </div>
+
+                      <p className="spot-advice">{tl.advice}</p>
+
+                      <div className="spot-footer">
+                        <button
+                          className="spot-route-btn"
+                          onClick={() => {
+                            setDestZoneId(zid);
+                            window.scrollTo({ top: 150, behavior: 'smooth' });
+                          }}
+                        >
+                          <span>Directions Here</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="zone-rec-right">
-                      <span className="zone-stress-pill" style={{ color: stress < 60 ? '#10b981' : '#f59e0b' }}>
-                        {stress}% Congestion
-                      </span>
-                      <button
-                        className="btn-primary btn-xs"
-                        onClick={() => setDestZoneId(z._id)}
-                      >
-                        Route Me
-                      </button>
+                  );
+                })
+              ) : (
+                (categorySpots[activeCategory] || []).map((spot, idx) => (
+                  <div key={idx} className="spot-item-card">
+                    <div className="spot-item-top">
+                      <div>
+                        <h4 className="spot-name">{spot.name}</h4>
+                        <span className="spot-wait-tag text-success">🟢 {spot.wait}</span>
+                      </div>
                     </div>
+                    <p className="spot-advice">{spot.desc}</p>
+                    <button
+                      className="spot-route-btn"
+                      onClick={() => {
+                        setDestZoneId(spot.zoneId);
+                        window.scrollTo({ top: 150, behavior: 'smooth' });
+                      }}
+                    >
+                      <span>Directions Here</span>
+                      <ChevronRight size={14} />
+                    </button>
                   </div>
-                );
-              })}
+                ))
+              )}
             </div>
           </div>
         </div>
 
-        {/* Right Column: Interactive Map */}
+        {/* Right Column: Interactive Map View */}
         <div className="map-column">
           <MapView
             zones={zones}
@@ -220,7 +388,7 @@ export default function VisitorGuidance({
             venues={venues}
             forecast={forecast}
             selectedZoneId={destZoneId}
-            onSelectZone={(zId) => setDestZoneId(zId)}
+            onSelectZone={(zid) => setDestZoneId(zid)}
             isVisitorView={true}
           />
         </div>
@@ -228,284 +396,423 @@ export default function VisitorGuidance({
 
       <style>{`
         .visitor-container {
-          padding: 20px 24px;
-          max-width: 1700px;
+          padding: 16px 24px;
+          max-width: 1600px;
           margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
         }
+
+        /* Hero Banner */
         .visitor-hero {
-          padding: 20px 24px;
-          margin-bottom: 20px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 24px;
+          padding: 20px 24px;
+          border-radius: var(--radius-md);
           flex-wrap: wrap;
+          gap: 16px;
+          background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(6, 182, 212, 0.08));
+          border: 1px solid rgba(6, 182, 212, 0.25);
         }
         .hero-left {
-          max-width: 700px;
+          max-width: 680px;
         }
         .hero-badge {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: var(--cyan);
+          font-size: 0.74rem;
+          font-weight: 800;
           letter-spacing: 0.08em;
+          color: var(--cyan);
+          background: rgba(6, 182, 212, 0.12);
+          padding: 3px 10px;
+          border-radius: var(--radius-full);
           margin-bottom: 8px;
         }
         .hero-title {
-          font-size: 1.5rem;
+          font-size: 1.4rem;
           font-weight: 800;
           color: var(--text-primary);
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
         .hero-subtitle {
-          font-size: 0.85rem;
+          font-size: 0.86rem;
           color: var(--text-secondary);
-          line-height: 1.5;
+          line-height: 1.4;
         }
-        .hero-status-card {
-          background: rgba(15, 23, 42, 0.9);
-          border: 1px solid var(--border-glow);
+
+        .hero-travel-window-card {
+          background: rgba(0, 0, 0, 0.35);
+          border: 1px solid rgba(6, 182, 212, 0.25);
           border-radius: var(--radius-md);
-          padding: 14px 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
+          padding: 12px 18px;
+          max-width: 380px;
         }
-        .status-kicker {
-          font-size: 0.7rem;
-          text-transform: uppercase;
-          color: var(--text-muted);
-          font-weight: 700;
-        }
-        .window-time-row {
+        .window-header {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 6px;
+          margin-bottom: 4px;
         }
-        .window-time {
-          font-family: 'Outfit', sans-serif;
-          font-size: 1.15rem;
+        .window-title {
+          font-size: 0.74rem;
           font-weight: 700;
-          color: var(--text-primary);
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
         }
-        .status-note {
-          font-size: 0.75rem;
-          color: var(--status-elevated);
+        .window-status-row {
+          margin-bottom: 4px;
         }
+        .window-badge {
+          font-size: 0.92rem;
+          font-weight: 700;
+          color: #34d399;
+        }
+        .window-hint {
+          font-size: 0.76rem;
+          color: var(--text-secondary);
+          line-height: 1.35;
+        }
+
+        /* Two-Column Grid */
         .visitor-grid {
           display: grid;
-          grid-template-columns: 1fr 1.2fr;
-          gap: 20px;
+          grid-template-columns: 1.1fr 1.3fr;
+          gap: 16px;
+          min-height: 580px;
         }
-        @media (max-width: 1080px) {
+        @media (max-width: 1040px) {
           .visitor-grid {
             grid-template-columns: 1fr;
           }
         }
+
         .planner-column {
           display: flex;
           flex-direction: column;
           gap: 16px;
         }
-        .route-card {
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
+        .map-column {
+          min-height: 520px;
+          height: 100%;
         }
-        .route-header {
+
+        /* Route Planner Card */
+        .route-card {
+          border-radius: var(--radius-md);
+          padding: 18px;
+        }
+        .route-card-header {
           display: flex;
           align-items: center;
           gap: 12px;
+          margin-bottom: 14px;
         }
-        .icon-badge {
-          width: 36px;
-          height: 36px;
-          background: rgba(6, 182, 212, 0.12);
-          border: 1px solid var(--border-glow);
-          border-radius: 8px;
+        .route-icon-badge {
+          width: 38px;
+          height: 38px;
+          background: rgba(6, 182, 212, 0.15);
+          border-radius: var(--radius-sm);
           display: flex;
           align-items: center;
           justify-content: center;
         }
         .card-title {
-          font-size: 1rem;
+          font-size: 1.05rem;
           font-weight: 700;
+          color: var(--text-primary);
         }
         .card-subtitle {
-          font-size: 0.75rem;
+          font-size: 0.76rem;
           color: var(--text-muted);
         }
+
         .selector-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+        @media (max-width: 600px) {
+          .selector-grid {
+            grid-template-columns: 1fr;
+          }
         }
         .selector-group {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 4px;
         }
         .selector-label {
-          font-size: 0.725rem;
-          font-weight: 600;
-          color: var(--text-secondary);
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
+          font-size: 0.74rem;
+          font-weight: 600;
+          color: var(--text-secondary);
         }
         .custom-select {
-          background: #0b1120;
+          background: rgba(0, 0, 0, 0.4);
           border: 1px solid var(--border-subtle);
           color: var(--text-primary);
-          padding: 8px 10px;
+          padding: 8px 12px;
           border-radius: var(--radius-sm);
-          font-size: 0.8rem;
+          font-size: 0.82rem;
           outline: none;
+          cursor: pointer;
         }
         .custom-select:focus {
-          border-color: var(--primary);
+          border-color: var(--cyan);
         }
-        .route-results-wrap {
+
+        .route-loading {
           display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .route-option {
-          border-radius: var(--radius-sm);
-          padding: 14px;
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        .route-option.primary {
-          background: rgba(15, 23, 42, 0.7);
-          border: 1px solid var(--border-subtle);
-        }
-        .route-option.alternate {
-          background: rgba(6, 182, 212, 0.08);
-          border: 1px solid rgba(6, 182, 212, 0.35);
-        }
-        .option-top {
-          display: flex;
-          justify-content: space-between;
           align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 24px;
+          color: var(--text-muted);
+          font-size: 0.84rem;
         }
-        .route-badge {
-          font-size: 0.65rem;
-          font-weight: 800;
-          padding: 2px 6px;
-          border-radius: 4px;
-          letter-spacing: 0.05em;
+        .loading-spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.15);
+          border-top-color: var(--cyan);
+          border-radius: var(--radius-full);
+          animation: spin 0.8s linear infinite;
         }
-        .route-badge.direct {
-          background: rgba(255, 255, 255, 0.08);
-          color: var(--text-secondary);
+
+        .route-options-container {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
         }
-        .route-badge.smart {
-          background: linear-gradient(135deg, var(--cyan), var(--primary));
-          color: white;
+        .route-option-card {
+          border-radius: var(--radius-sm);
+          padding: 12px 14px;
+          border: 1px solid var(--border-subtle);
+          background: rgba(0, 0, 0, 0.25);
+        }
+        .route-option-card.recommended {
+          background: rgba(6, 182, 212, 0.08);
+          border-color: rgba(6, 182, 212, 0.35);
+          box-shadow: 0 0 15px rgba(6, 182, 212, 0.12);
+        }
+        .route-option-badge {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
+          font-size: 0.68rem;
+          font-weight: 800;
+          letter-spacing: 0.05em;
+          color: var(--cyan);
+          margin-bottom: 6px;
         }
-        .route-eta {
-          font-weight: 700;
-          font-size: 0.95rem;
-          font-family: 'Outfit', sans-serif;
-          color: var(--text-primary);
-        }
-        .relief-tag {
-          font-size: 0.725rem;
-          color: var(--status-normal);
-          font-weight: 700;
-        }
-        .route-corridor {
-          font-size: 0.9rem;
-          font-weight: 700;
-        }
-        .route-meta {
+        .route-option-header-sub {
           display: flex;
-          gap: 8px;
-          font-size: 0.75rem;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 6px;
+        }
+        .direct-label {
+          font-size: 0.74rem;
           color: var(--text-muted);
         }
-        .rating.high { color: var(--status-warning); font-weight: 600; }
-        .rating.good { color: var(--status-normal); font-weight: 600; }
-        .alternate-reason {
-          font-size: 0.775rem;
-          color: #cbd5e1;
-          line-height: 1.4;
+        .crowd-badge {
+          font-size: 0.68rem;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--text-secondary);
         }
-        .alternate-action-row {
+
+        .route-option-body {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          margin-top: 6px;
+          gap: 14px;
         }
-        .comfort-score {
-          font-size: 0.75rem;
-          color: var(--cyan);
-          font-weight: 600;
-        }
-        .btn-xs {
-          padding: 4px 8px;
-          font-size: 0.7rem;
-        }
-        .alternate-zones-card {
-          padding: 20px;
+        .route-time-stat {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          align-items: flex-start;
+          min-width: 65px;
         }
-        .card-top-row {
+        .route-minutes {
+          font-size: 1.25rem;
+          font-weight: 800;
+        }
+        .route-comfort-pill {
+          font-size: 0.68rem;
+          color: #34d399;
+          font-weight: 700;
+        }
+        .route-details {
+          flex: 1;
+        }
+        .route-path-name {
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+        .route-path-desc {
+          font-size: 0.76rem;
+          color: var(--text-secondary);
+          line-height: 1.35;
+        }
+
+        .route-prompt {
           display: flex;
-          justify-content: space-between;
+          flex-direction: column;
           align-items: center;
+          justify-content: center;
+          padding: 24px;
+          text-align: center;
+          gap: 8px;
+          color: var(--text-muted);
+          font-size: 0.82rem;
         }
-        .zones-list {
+
+        /* Skip the Queues Spots Card */
+        .spots-card {
+          border-radius: var(--radius-md);
+          padding: 16px;
+        }
+        .spots-header {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-bottom: 12px;
+        }
+        .spots-title-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .category-chips {
+          display: flex;
+          gap: 6px;
+          overflow-x: auto;
+          padding-bottom: 2px;
+        }
+        .chip {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(0, 0, 0, 0.35);
+          border: 1px solid var(--border-subtle);
+          color: var(--text-secondary);
+          padding: 4px 10px;
+          border-radius: var(--radius-full);
+          font-size: 0.72rem;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.15s;
+        }
+        .chip:hover {
+          color: var(--text-primary);
+        }
+        .chip.active {
+          background: rgba(6, 182, 212, 0.18);
+          border-color: var(--cyan);
+          color: #ffffff;
+        }
+
+        .spots-list {
           display: flex;
           flex-direction: column;
           gap: 8px;
+          max-height: 280px;
+          overflow-y: auto;
         }
-        .zone-rec-item {
-          background: rgba(15, 23, 42, 0.6);
+        .spot-item-card {
+          background: rgba(0, 0, 0, 0.25);
           border: 1px solid var(--border-subtle);
           border-radius: var(--radius-sm);
-          padding: 10px 14px;
+          padding: 10px 12px;
+          transition: all 0.2s;
+        }
+        .spot-item-card:hover {
+          background: rgba(30, 41, 59, 0.8);
+          border-color: rgba(6, 182, 212, 0.3);
+        }
+        .spot-item-top {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          transition: all 0.2s ease;
+          margin-bottom: 4px;
         }
-        .zone-rec-item:hover {
-          background: rgba(30, 41, 59, 0.7);
-        }
-        .zone-rec-left {
-          display: flex;
-          flex-direction: column;
-        }
-        .zone-rec-name {
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-        .zone-rec-cat {
-          font-size: 0.675rem;
-          color: var(--text-muted);
-        }
-        .zone-rec-right {
+        .spot-name-group {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 8px;
         }
-        .zone-stress-pill {
-          font-size: 0.75rem;
+        .spot-traffic-dot {
+          font-size: 0.8rem;
+        }
+        .spot-name {
+          font-size: 0.86rem;
           font-weight: 700;
-          font-family: monospace;
+          color: var(--text-primary);
+        }
+        .spot-traffic-label {
+          font-size: 0.7rem;
+          font-weight: 700;
+        }
+        .spot-wait-tag {
+          font-size: 0.72rem;
+          font-weight: 700;
+        }
+
+        .bookmark-btn {
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+          transition: all 0.15s;
+        }
+        .bookmark-btn:hover {
+          color: var(--cyan);
+        }
+        .bookmark-btn.saved {
+          color: var(--cyan);
+        }
+
+        .spot-advice {
+          font-size: 0.76rem;
+          color: var(--text-secondary);
+          line-height: 1.35;
+          margin-bottom: 8px;
+        }
+        .spot-footer {
+          display: flex;
+          justify-content: flex-end;
+        }
+        .spot-route-btn {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--border-subtle);
+          color: var(--cyan);
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-size: 0.72rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .spot-route-btn:hover {
+          background: var(--cyan);
+          color: #090d16;
         }
       `}</style>
     </div>

@@ -36,15 +36,25 @@ async function testIntegration() {
     const forecastData = await forecastRes.json();
     console.log(`   ✅ System Projected Stress: ${forecastData.systemProjectedStress}%, Horizon: ${forecastData.horizonMinutes} min`);
 
-    // 4. Test Scenario Mutation: POST /api/scenario
-    console.log('\n4. Testing POST /api/scenario (What-If surge injection)...');
-    const scenarioRes = await fetch(`${baseUrl}/scenario`, {
+    // 4. Test Scenario Mutation & RBAC Protection: POST /api/scenario
+    console.log('\n4. Testing RBAC Security on POST /api/scenario...');
+    const unauthRes = await fetch(`${baseUrl}/scenario`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ demandSurgeMultiplier: 1.4 }),
     });
+    console.log(`   ✅ Unauthenticated request correctly rejected with HTTP ${unauthRes.status}`);
+
+    const scenarioRes = await fetch(`${baseUrl}/scenario`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer dev-organizer-token',
+      },
+      body: JSON.stringify({ demandSurgeMultiplier: 1.4 }),
+    });
     const scenarioData = await scenarioRes.json();
-    console.log(`   ✅ Surge updated to: ${scenarioData.whatIfOverrides.demandSurgeMultiplier}x`);
+    console.log(`   ✅ Authorized Organizer surge updated to: ${scenarioData.whatIfOverrides?.demandSurgeMultiplier}x`);
 
     // 5. Test Visitor Route Guidance: GET /api/visitor/route
     console.log('\n5. Testing GET /api/visitor/route...');

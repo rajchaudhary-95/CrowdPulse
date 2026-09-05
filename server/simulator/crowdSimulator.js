@@ -56,6 +56,59 @@ class CrowdSimulator {
    */
   async initialize() {
     try {
+      const { getSupabase, isSupabaseConfigured } = require('../config/supabase');
+      if (isSupabaseConfigured()) {
+        const supabase = getSupabase();
+        const { data: supaZones } = await supabase.from('zones').select('*');
+        const { data: supaVenues } = await supabase.from('venues').select('*');
+        const { data: supaEdges } = await supabase.from('transit_edges').select('*');
+
+        if (supaZones && supaZones.length > 0) {
+          for (const z of supaZones) {
+            this.zones.set(z.id, {
+              _id: z.id,
+              name: z.name,
+              category: z.category,
+              geoCenter: z.geo_center,
+              geoBoundary: z.geo_boundary,
+              totalCapacity: z.total_capacity,
+              liveMetrics: z.live_metrics,
+              metadata: z.metadata,
+            });
+          }
+          for (const v of (supaVenues || [])) {
+            this.venues.set(v.id, {
+              _id: v.id,
+              name: v.name,
+              zoneId: v.zone_id,
+              location: v.location,
+              capacity: v.capacity,
+              scheduledEvents: v.scheduled_events,
+            });
+          }
+          for (const e of (supaEdges || [])) {
+            this.transitEdges.set(e.id, {
+              _id: e.id,
+              name: e.id.replace(/-/g, ' ').replace('edge', '').trim(),
+              fromZoneId: e.source_zone_id,
+              toZoneId: e.target_zone_id,
+              mode: e.mode,
+              nominalCapacityPerHour: e.capacity_per_hour,
+              pathCoordinates: e.polyline,
+              liveStatus: {
+                currentFlowPerHour: e.current_flow_rate || 0,
+                utilizationRate: e.capacity_per_hour ? (e.current_flow_rate / e.capacity_per_hour) : 0,
+                congestionLevel: e.status || 'optimal',
+              },
+            });
+          }
+
+          this.evaluateIntelligence();
+          console.log(`[Simulator] Hydrated from Supabase PostgreSQL: ${this.zones.size} zones, ${this.venues.size} venues, ${this.transitEdges.size} transit links.`);
+          return;
+        }
+      }
+
       let dbZones = await ZoneModel.find().lean();
       let dbVenues = await VenueModel.find().lean();
       let dbEdges = await TransitEdgeModel.find().lean();
@@ -283,6 +336,21 @@ class CrowdSimulator {
     } catch (err) {
       // Fail-Safe: non-blocking persistence
     }
+
+    try {
+      const { getSupabase } = require('../config/supabase');
+      const supabase = getSupabase();
+      if (supabase) {
+        await supabase.from('visitor_flow_snapshots').insert([{
+          timestamp: snapshot.simulatedTime,
+          tick_index: this.tickCount,
+          system_occupancy_total: snapshot.globalMetrics?.totalActiveVisitors || 0,
+          zones_summary: snapshot.zoneSnapshots || [],
+        }]);
+      }
+    } catch (err) {
+      // Non-blocking fail-safe
+    }
   }
 
   updateScenario(overrides = {}) {
@@ -338,7 +406,7 @@ class CrowdSimulator {
     const fromZone = this.zones.get(fromZoneId);
     const toZone = this.zones.get(toZoneId);
 
-    const directTime = directEdge ? directEdge.liveStatus.currentTravelTimeMinutes : 12;
+    const directTime = directEdge?.liveStatus?.currentTravelTimeMinutes || 8;
     const directStress = toZone ? toZone.liveMetrics.compositeStressScore : 50;
 
     // Identify alternate less-crowded destination zone
