@@ -1,0 +1,15 @@
+{
+  "name": "hackcelestial4-crowdpulse",
+  "version": "1.0.0",
+  "description": "CrowdPulse / OmniVenue - Unified Mega-Event Capacity, Transit & Venue Orchestration System",
+  "scripts": {
+    "start:server": "npm --prefix server start",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build:client": "npm --prefix client run build",
+    "test": "npm --prefix server run test:handshake && node server/test-services.js && node server/test-integration.js"
+  },
+  "keywords": ["hackathon", "mega-events", "crowd-management", "optimization", "leaflet", "socket.io", "mern"],
+  "author": "HackCelestial Team",
+  "license": "MIT"
+}
