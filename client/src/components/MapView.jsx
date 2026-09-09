@@ -58,11 +58,11 @@ const CAMPUS_EDGES = [
   { id: 'edge-depot-maingate', from: 'zone-panvel-transit', to: 'zone-atrium-main', label: 'Sector 16 Loop' },
   { id: 'edge-depot-canteengate', from: 'zone-panvel-transit', to: 'zone-canteen-back', label: 'Sector 16 Loop' },
   { id: 'edge-maingate-canteen', from: 'zone-atrium-main', to: 'zone-canteen-back', label: 'Covered Internal Arcade' },
-  { id: 'edge-maingate-quad', from: 'zone-atrium-main', to: 'zone-quadrangle', label: 'Atrium Concourse' },
-  { id: 'edge-canteengate-quad', from: 'zone-canteen-back', to: 'zone-quadrangle', label: 'Canteen Concourse' },
+  { id: 'edge-maingate-quad', from: 'zone-atrium-main', to: 'zone-quadrangle', label: 'Atrium Walkway' },
+  { id: 'edge-canteengate-quad', from: 'zone-canteen-back', to: 'zone-quadrangle', label: 'Canteen Walkway' },
   { id: 'edge-atrium-sports', from: 'zone-atrium-main', to: 'zone-sports-ground', label: 'PICA Architecture Ramp (Step-Free)' },
   { id: 'edge-canteen-sports', from: 'zone-canteen-back', to: 'zone-sports-ground', label: 'Turf Connector' },
-  { id: 'edge-quad-mainground', from: 'zone-quadrangle', to: 'zone-main-ground', label: 'Arena Concourse (Central Axis)' },
+  { id: 'edge-quad-mainground', from: 'zone-quadrangle', to: 'zone-main-ground', label: 'Main Stage Walkway (Central Axis)' },
   { id: 'edge-sports-mainground', from: 'zone-sports-ground', to: 'zone-main-ground', label: 'North Lawn Ramp (Free Flow)' },
 ];
 
@@ -951,7 +951,7 @@ export default function MapView({
 
         {/* Live Sector Callout Chips */}
         <div className="sector-callout callout-north font-mono">
-          <span className="callout-title">SECTOR 1 (QUAD CONCOURSE CHOKE)</span>
+          <span className="callout-title">SECTOR 1 (CENTRAL QUAD BOTTLENECK)</span>
           <div className="callout-value">
             <span className="callout-dot bg-error"></span>
             <span className="text-error font-bold">1,850 OCC (92%)</span>

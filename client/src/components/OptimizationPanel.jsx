@@ -17,7 +17,7 @@ export default function OptimizationPanel({ recommendations = [], onSelectZone, 
             'edge-depot-maingate': 1.4,
             'edge-sports-bypass': 1.8,
           },
-          actionDescription: 'Applied Simplex Linear Flow Diversion (-18% Concourse Congestion)',
+          actionDescription: 'Applied Flow Rebalance (-18% Walkway Crowding)',
         });
       }
       setAppliedSuccess(true);
@@ -35,13 +35,13 @@ export default function OptimizationPanel({ recommendations = [], onSelectZone, 
       <div className="optimizer-header">
         <div className="optimizer-title-row">
           <Zap size={18} className="text-secondary" />
-          <h3 className="optimizer-title">Simplex Flow Optimizer</h3>
+          <h3 className="optimizer-title">Crowd Flow Optimizer</h3>
         </div>
         <span className="solver-tag font-mono">SOLVER v4.2</span>
       </div>
 
       <p className="optimizer-subtitle">
-        Autonomous linear optimization running against real-time pedestrian vector calculus.
+        Automated crowd balancing based on live attendee movement and gate capacity.
       </p>
 
       {/* Solutions List */}
@@ -51,8 +51,8 @@ export default function OptimizationPanel({ recommendations = [], onSelectZone, 
             <Zap size={15} className="text-secondary" />
           </div>
           <div className="solution-text-group">
-            <span className="solution-heading">-18% Concourse Congestion</span>
-            <span className="solution-desc">Reroute 1,250 attendees from Gate North to South Promenade</span>
+            <span className="solution-heading">-18% Walkway Crowding</span>
+            <span className="solution-desc">Reroute 1,250 attendees away from central bottlenecks</span>
           </div>
         </div>
 

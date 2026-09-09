@@ -39,34 +39,34 @@ export default function AlertsFeed({ alerts = [], onSelectZone, onAlertActionExe
   const alertItems = (alerts && alerts.length > 0)
     ? alerts.map((a, idx) => ({
         id: a.id || `alert-${idx}`,
-        type: a.severity === 'critical' ? 'CRITICAL BREACH' : 'ELEVATED TRANSIT SPILL',
+        type: a.severity === 'critical' ? 'HIGH CROWD ALERT' : 'BUS DELAY NOTICE',
         time: a.timestamp ? new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '14:32:10 UTC',
         sector: a.zoneId ? a.zoneId.replace('zone-', 'SEC-').toUpperCase() : (idx === 0 ? 'SEC-01' : 'SEC-04'),
-        title: a.title || (idx === 0 ? 'Main Arena Turnstiles at 98% capacity threshold.' : 'Shuttle Station B headway delayed 7m.'),
-        desc: a.message || a.recommendedAction || 'Concourse bottleneck active.',
+        title: a.title || (idx === 0 ? 'Main Arena Turnstiles at 98% capacity threshold.' : 'Shuttle Station B delayed by 7 mins.'),
+        desc: a.message || a.recommendedAction || 'Walkway bottleneck active.',
         severity: a.severity || (idx === 0 ? 'critical' : 'elevated'),
-        buttons: a.severity === 'critical' ? ['Auto-Reroute', 'Push Advisory', 'Dispatch Stewards'] : ['Auto-Reroute', 'Push Advisory'],
+        buttons: a.severity === 'critical' ? ['Auto-Reroute', 'Send Alert', 'Send Ground Crew'] : ['Auto-Reroute', 'Send Alert'],
       }))
     : [
         {
           id: 'alert-1',
-          type: 'CRITICAL BREACH',
+          type: 'HIGH CROWD ALERT',
           time: '14:32:10 UTC',
           sector: 'SEC-01',
           title: 'Main Arena Turnstiles at 98% capacity threshold.',
-          desc: 'Concourse bottleneck active. Surge egress impending from stage pyrotechnics completion.',
+          desc: 'Walkway bottleneck active. Large crowd exit expected after concert finishes.',
           severity: 'critical',
-          buttons: ['Auto-Reroute', 'Push Advisory', 'Dispatch Stewards'],
+          buttons: ['Auto-Reroute', 'Send Alert', 'Send Ground Crew'],
         },
         {
           id: 'alert-2',
-          type: 'ELEVATED TRANSIT SPILL',
+          type: 'BUS DELAY NOTICE',
           time: '14:34:04 UTC',
           sector: 'SEC-04',
-          title: 'Shuttle Station B headway delayed 7m.',
-          desc: 'Pedestrian crowd overspill across Terminal loop lane 2.',
+          title: 'Shuttle Station B delayed by 7 mins.',
+          desc: 'Large crowd waiting at bus pick-up point.',
           severity: 'elevated',
-          buttons: ['Auto-Reroute', 'Push Advisory'],
+          buttons: ['Auto-Reroute', 'Send Alert'],
         },
       ];
 

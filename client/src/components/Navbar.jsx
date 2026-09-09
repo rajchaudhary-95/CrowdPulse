@@ -35,7 +35,7 @@ export default function Navbar({
           </div>
           <div className="brand-text-group">
             <h1 className="brand-title">
-              CrowdPulse <span className="brand-sep">/</span> <span className="brand-sub">OmniVenue</span>
+              CrowdPulse
             </h1>
             <p className="brand-tagline">MEGA-EVENT ORCHESTRATION &amp; VISITOR GUIDANCE</p>
           </div>

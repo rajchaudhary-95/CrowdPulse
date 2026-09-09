@@ -408,17 +408,17 @@ export default function VisitorGuidance({
     pace: 'Smooth Pace (1.3 m/s)',
     surface: 'Paved & Garden Ramp (Step-Free)',
     turnstileWait: '0 - 1 min wait',
-    corridorSummary: 'Canteen Gate 2 Concourse → PICA Shaded Garden Lawn → Main Concert Ground',
+    corridorSummary: 'Canteen Gate 2 Path → PICA Shaded Garden Lawn → Main Concert Ground',
     steps: [
       {
         stepNumber: 1,
-        instruction: 'Depart from Gate 1 Turnstiles past Engineering Atrium concourse.',
+        instruction: 'Depart from Gate 1 Turnstiles past Engineering Atrium walkway.',
         landmark: 'Atrium Welcome Hall',
         distanceMeters: 180,
         baseWalkSeconds: 130,
         isChokepoint: false,
         crowdLevel: 'free_flow',
-        surfaceType: 'Paved Concourse',
+        surfaceType: 'Paved Walkway',
         icon: 'gate',
       },
       {
@@ -447,7 +447,7 @@ export default function VisitorGuidance({
   };
 
   const standard = routeData?.standardRoute || {
-    title: 'Direct Concourse Option',
+    title: 'Direct Walkway Option',
     badge: 'High Foot Traffic',
     totalMinutes: 14,
     baseWalkMinutes: 5,
@@ -455,27 +455,27 @@ export default function VisitorGuidance({
     totalDistanceMeters: 320,
     crowdDensityPct: 92,
     pace: 'Slow Crawl (< 0.4 m/s)',
-    surface: 'Main Concourse Spine',
+    surface: 'Main Central Walkway',
     turnstileWait: '8 - 12 min queue',
-    chokepointNote: 'High foot traffic along The Quad Concourse',
-    corridorSummary: 'The Quad Concourse → Alegria Main Concert Arena',
+    chokepointNote: 'High foot traffic along The Quad Walkway',
+    corridorSummary: 'The Quad Walkway → Alegria Main Concert Arena',
     steps: [
       {
         stepNumber: 1,
         instruction: 'Proceed from Gate 1 directly towards the central campus axis.',
-        landmark: 'Main Concourse Gate 1',
+        landmark: 'Gate 1 Entry',
         distanceMeters: 140,
         baseWalkSeconds: 100,
         isChokepoint: false,
         crowdLevel: 'moderate',
-        surfaceType: 'Paved Concourse',
+        surfaceType: 'Paved Walkway',
         paceDescription: 'Normal Pace (1.1 m/s)',
-        studentProTip: 'Follow floor concourse signage towards the central axis.',
+        studentProTip: 'Follow directional signs towards the central axis.',
         icon: 'gate',
       },
       {
         stepNumber: 2,
-        instruction: 'Traverse The Central Quadrangle concourse. Daytime stage setups and high attendee foot traffic cause walking delays.',
+        instruction: 'Walk through The Central Quadrangle. Daytime stage setups and high attendee foot traffic cause walking delays.',
         landmark: 'The Quadrangle (Central Axis)',
         distanceMeters: 180,
         baseWalkSeconds: 140,
@@ -510,9 +510,9 @@ export default function VisitorGuidance({
               <span className={`dot-live-status ${isEgress ? 'dot-cyan' : isIngress ? 'dot-green' : 'dot-amber'}`}></span>
               <span>
                 {isEgress
-                  ? 'ALEGRIA • NIGHT EGRESS (GOING OUT)'
+                  ? 'ALEGRIA • NIGHT EXIT (HEADING HOME)'
                   : isIngress
-                  ? 'ALEGRIA • DAYTIME INGRESS (COMING IN)'
+                  ? 'ALEGRIA • DAYTIME ENTRY (ARRIVING)'
                   : 'ALEGRIA • LIVE FESTIVAL RADAR'}
               </span>
             </div>
@@ -521,7 +521,7 @@ export default function VisitorGuidance({
               Pillai University's Alegria
             </h1>
             <div className={`hero-mode-subtitle font-display ${isEgress ? 'subtitle-egress' : isIngress ? 'subtitle-ingress' : 'subtitle-midday'}`}>
-              {isEgress ? 'Night Egress & Safe Outflow Navigator' : isIngress ? 'Daytime Ingress & Campus Entry Radar' : 'Live Campus Concourse Navigator'}
+              {isEgress ? 'Night Exit & Safe Walking Guide' : isIngress ? 'Daytime Entry & Campus Arrival Guide' : 'Live Campus Walkway Guide'}
             </div>
 
             <p className="hero-description">
@@ -535,7 +535,7 @@ export default function VisitorGuidance({
                 </>
               ) : (
                 <>
-                  Live festival concourse radar for Alegria at Pillai Campus. Inter-stage transit flowing between Quadrangle, Sports Ground, and Canteen.
+                  Live festival crowd guide for Alegria at Pillai Campus. Walking routes open between Quadrangle, Sports Ground, and Canteen.
                 </>
               )}
             </p>
@@ -546,7 +546,7 @@ export default function VisitorGuidance({
             <div className={`optimal-window-card glass-panel ${isEgress ? 'theme-egress-card' : isIngress ? 'theme-ingress-card' : ''}`}>
               <div className="window-card-header">
                 <span className="window-label font-mono">
-                  {isEgress ? 'SMOOTH DEPARTURE & TRANSIT PLANNER' : 'LIVE GATE ACCESS & TURNSTILE RADAR'}
+                  {isEgress ? 'SMOOTH EXIT & TRANSIT GUIDE' : 'LIVE GATE ACCESS & ENTRY GUIDE'}
                 </span>
               </div>
 
@@ -613,7 +613,7 @@ export default function VisitorGuidance({
             <span className="tester-current">
               <strong>
                 {festivalPhase?.phaseIcon || (isEgress ? '🌙' : isIngress ? '🌅' : '☀️')}{' '}
-                {festivalPhase?.phaseLabel || (isEgress ? 'Night Egress & Mass Exit' : isIngress ? 'Daytime Ingress' : 'Peak Concurrency')}
+                {festivalPhase?.phaseLabel || (isEgress ? 'Night Exit & Heading Home' : isIngress ? 'Daytime Arrival' : 'Peak Festival Crowd')}
               </strong>
             </span>
             <span className="tester-sub font-body">
@@ -621,7 +621,7 @@ export default function VisitorGuidance({
                 ? 'Going Out Mode: Gates 1 & 2 turnstiles reversed for mass exit towards Panvel Station & Autos'
                 : isIngress
                 ? 'Coming In Mode: Gates 1 & 2 scanning incoming student passes & baggage'
-                : 'Circulation Mode: Standard internal concourse flows across stages'}
+                : 'Festival Mode: Normal walking routes between stages'}
             </span>
           </div>
 
@@ -631,7 +631,7 @@ export default function VisitorGuidance({
               type="button"
               className={`btn-tester-pill ${isIngress ? 'active' : ''}`}
               onClick={() => handlePreviewPhase('INGRESS')}
-              title="Simulate Daytime Ingress (Entering through Gates)"
+              title="Simulate Daytime Entry (Arriving on Campus)"
             >
               🌅 11:30 AM (Coming In)
             </button>
@@ -639,7 +639,7 @@ export default function VisitorGuidance({
               type="button"
               className={`btn-tester-pill ${!isIngress && !isEgress ? 'active' : ''}`}
               onClick={() => handlePreviewPhase('CIRCULATION')}
-              title="Simulate Peak Midday Concurrency"
+              title="Simulate Peak Festival Crowd"
             >
               ☀️ 4:30 PM (Midday Events)
             </button>
@@ -647,7 +647,7 @@ export default function VisitorGuidance({
               type="button"
               className={`btn-tester-pill ${isEgress ? 'active' : ''}`}
               onClick={() => handlePreviewPhase('EGRESS')}
-              title="Simulate Night Mass Egress (Going Out through Gates)"
+              title="Simulate Night Exit (Leaving Campus)"
             >
               🌙 9:45 PM (Going Out)
             </button>
@@ -898,7 +898,7 @@ export default function VisitorGuidance({
                   <span>WHY THIS ROUTE IS RECOMMENDED:</span>
                 </div>
                 <p className="why-optimal-text font-body">
-                  Bypasses high-congestion central concourses via the shaded PICA Architecture Lawn and wide ADA ramps. Continuous smooth walking pace with zero stairs.
+                  Bypasses crowded central walkways via the shaded PICA Architecture Lawn and wide ADA ramps. Continuous smooth walking pace with zero stairs.
                 </p>
               </div>
             </div>
@@ -988,7 +988,7 @@ export default function VisitorGuidance({
                               {step.isChokepoint && (
                                 <>
                                   <span>•</span>
-                                  <span className="text-warning font-bold">Heavy Concourse Density</span>
+                                  <span className="text-warning font-bold">Crowded Main Walkway</span>
                                 </>
                               )}
                             </div>
@@ -1012,7 +1012,7 @@ export default function VisitorGuidance({
                     <span>WHY THIS ROUTE IS NOT OPTIMAL:</span>
                   </div>
                   <p className="why-slower-text font-body">
-                    Direct concourse through the central campus axis. While physically shorter in distance, high festival foot traffic and stage crossroads cause crowd congestion and slower movement.
+                    Direct path through the central campus axis. While physically shorter in distance, high festival foot traffic and stage crossroads cause crowd congestion and slower movement.
                   </p>
                 </div>
               </div>
@@ -1040,11 +1040,11 @@ export default function VisitorGuidance({
           />
         </section>
 
-        {/* SECTION 4: Live Concourse Triage Discovery Hub */}
+        {/* SECTION 4: Live Spot Finder Discovery Hub */}
         <section className="discovery-hub-section">
           <div className="section-header-row">
             <div className="section-title-group">
-              <span className="section-eyebrow font-mono">LIVE CONCOURSE TRIAGE</span>
+              <span className="section-eyebrow font-mono">LIVE SPOT FINDER</span>
               <h2 className="section-main-title font-display">&quot;Skip the Queues&quot; Nearby Discovery Hub</h2>
             </div>
             <span className="recalc-note font-mono">Estimated wait based on live sensor tracking</span>
@@ -1187,7 +1187,7 @@ export default function VisitorGuidance({
           <section className="facility-radar-section glass-panel">
             <div className="section-header-row">
               <div className="section-title-group">
-                <span className="section-eyebrow font-mono">CHECKPOINT TELEMETRY</span>
+                <span className="section-eyebrow font-mono">LIVE GATE STATUS</span>
                 <h2 className="section-main-title font-display">Live Gate &amp; Facility Wait Times</h2>
               </div>
               <span className="recalc-note font-mono">Sensor frequency: 5s pulse</span>
@@ -1376,7 +1376,7 @@ export default function VisitorGuidance({
 
       {/* Aerospace System Footer */}
       <footer className="app-aerospace-footer">
-        <div>OMNIVENUE CORE ENGINE v4.8.2  •  AEROSPACE-GRADE TELEMETRY</div>
+        <div>CROWDPULSE CORE ENGINE v4.8.2  •  AEROSPACE-GRADE TELEMETRY</div>
         <div>© 2025 CrowdPulse Logistics Network. Secured Feed.</div>
       </footer>
 

@@ -495,7 +495,7 @@ export default function OrganizerDashboard({
             onClick={() => handleQuickIntervention('offset_events')}
           >
             <span>⏱️</span>
-            <span>STAGGER EGRESS (+30m)</span>
+            <span>DELAY CONCERT END (+30m)</span>
           </button>
           <button
             className="btn-intervention font-mono"
@@ -521,7 +521,7 @@ export default function OrganizerDashboard({
             onClick={() => setShowZoneMatrix(!showZoneMatrix)}
           >
             <Table size={13} />
-            <span>ZONE MATRIX</span>
+            <span>ZONE STATUS</span>
           </button>
         </div>
       </div>
@@ -590,7 +590,7 @@ export default function OrganizerDashboard({
             <div className="deck-title-group">
               <span>🚪</span>
               <span className="deck-title font-display">Campus Perimeter Gate Flow & Turnstile Controllers</span>
-              <span className="deck-sub font-mono">LIVE DUAL-DIRECTION THROUGHPUT TELEMETRY</span>
+              <span className="deck-sub font-mono">LIVE GATE INFLOW & OUTFLOW TRACKER</span>
             </div>
             <button className="btn-deck-close" onClick={() => setShowGateControls(false)}>✕</button>
           </div>
@@ -807,7 +807,7 @@ export default function OrganizerDashboard({
             <div className="inspector-title-group">
               <Activity size={16} className="text-cyan" />
               <span className="inspector-title font-display">{zoneTelemetry.name}</span>
-              <span className="telemetry-pill">DEEP-DIVE SENSOR TELEMETRY</span>
+              <span className="telemetry-pill">ZONE LIVE SENSORS</span>
             </div>
             <button className="btn-inspector-close" onClick={() => setSelectedZoneId(null)}>
               <X size={15} />
@@ -824,7 +824,7 @@ export default function OrganizerDashboard({
             </div>
 
             <div className="inspector-stat-box">
-              <span className="stat-label">INGRESS / EGRESS FLOW</span>
+              <span className="stat-label">ENTRY / EXIT FLOW</span>
               <span className="stat-val font-display">
                 +{zoneTelemetry.flowDynamics?.ingressRatePerMin} / -{zoneTelemetry.flowDynamics?.egressRatePerMin} <small>p/min</small>
               </span>
@@ -904,7 +904,7 @@ export default function OrganizerDashboard({
             <div className="matrix-header">
               <div className="matrix-title-group">
                 <Table size={16} className="text-secondary" />
-                <h3 className="matrix-title">Perimeter Telemetry Matrix</h3>
+                <h3 className="matrix-title">Zone Live Status Board</h3>
                 <span className="active-sectors-pill font-mono">{displayZones.length} ACTIVE SECTORS</span>
               </div>
               <div className="polling-rate font-mono">
@@ -1141,7 +1141,7 @@ export default function OrganizerDashboard({
 
       {/* Aerospace System Footer */}
       <footer className="app-aerospace-footer">
-        <div>OMNIVENUE CORE ENGINE v4.8.2  •  AEROSPACE-GRADE TELEMETRY</div>
+        <div>CROWDPULSE CORE ENGINE v4.8.2  •  AEROSPACE-GRADE TELEMETRY</div>
         <div>© 2025 CrowdPulse Logistics Network. Secured Feed.</div>
       </footer>
 
