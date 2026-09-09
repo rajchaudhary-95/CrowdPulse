@@ -1,4 +1,4 @@
-# 🏟️ CrowdPulse / OmniVenue
+# 🎪 CrowdPulse — Pillai University's Alegria Festival Intelligence Platform
 
 > **Real-Time Mega-Event Crowd, Transit & Venue Orchestration Platform**
 

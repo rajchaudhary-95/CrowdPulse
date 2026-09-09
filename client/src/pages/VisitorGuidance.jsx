@@ -172,11 +172,50 @@ export default function VisitorGuidance({
   venues = [],
   forecast = {},
   recommendations = [],
+  simulatedTime,
+  festivalPhase = {},
+  gateStatuses = [],
+  onUpdateClock,
 }) {
   const { promptLogin } = useAuth();
 
-  const [originZone, setOriginZone] = useState('zone-atrium-main');
-  const [destZone, setDestZone] = useState('zone-main-ground');
+  const [previewPhase, setPreviewPhase] = useState(festivalPhase?.phase || 'EGRESS');
+
+  useEffect(() => {
+    if (festivalPhase?.phase) {
+      setPreviewPhase(festivalPhase.phase);
+    }
+  }, [festivalPhase?.phase]);
+
+  const activePhase = previewPhase || festivalPhase?.phase || 'EGRESS';
+  const isEgress = activePhase === 'EGRESS';
+  const isIngress = activePhase === 'INGRESS';
+
+  const [originZone, setOriginZone] = useState(isEgress ? 'zone-main-ground' : 'zone-atrium-main');
+  const [destZone, setDestZone] = useState(isEgress ? 'zone-panvel-transit' : 'zone-main-ground');
+
+  const handlePreviewPhase = async (phase) => {
+    setPreviewPhase(phase);
+    if (phase === 'INGRESS') {
+      setOriginZone('zone-atrium-main');
+      setDestZone('zone-main-ground');
+    } else if (phase === 'EGRESS') {
+      setOriginZone('zone-main-ground');
+      setDestZone('zone-panvel-transit');
+    } else {
+      setOriginZone('zone-quadrangle');
+      setDestZone('zone-sports-ground');
+    }
+
+    if (onUpdateClock) {
+      try {
+        await onUpdateClock({ setPhase: phase });
+      } catch (err) {
+        console.warn('Clock phase sync error:', err.message);
+      }
+    }
+  };
+
   const [activeCategory, setActiveCategory] = useState('all');
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
   const [reminderSet, setReminderSet] = useState(false);
@@ -464,57 +503,156 @@ export default function VisitorGuidance({
           </div>
         )}
 
-        {/* SECTION 1: Hero Live Flow Guide */}
+        {/* SECTION 1: Hero Live Flow Guide (Dynamic Ingress vs Egress) */}
         <section className="visitor-hero-section">
           <div className="hero-left-col">
-            <div className="flow-guide-badge font-mono">
-              <span className="dot-live-green"></span>
-              <span>ALEGRIA • LIVE GUIDE</span>
+            <div className={`flow-guide-badge font-mono ${isEgress ? 'badge-egress' : isIngress ? 'badge-ingress' : ''}`}>
+              <span className={`dot-live-status ${isEgress ? 'dot-cyan' : isIngress ? 'dot-green' : 'dot-amber'}`}></span>
+              <span>
+                {isEgress
+                  ? 'ALEGRIA • NIGHT EGRESS (GOING OUT)'
+                  : isIngress
+                  ? 'ALEGRIA • DAYTIME INGRESS (COMING IN)'
+                  : 'ALEGRIA • LIVE FESTIVAL RADAR'}
+              </span>
             </div>
 
-            <h1 className="hero-main-title font-display">Pillai University&apos;s Alegria</h1>
+            <h1 className="hero-main-title font-display">
+              Pillai University's Alegria
+            </h1>
+            <div className={`hero-mode-subtitle font-display ${isEgress ? 'subtitle-egress' : isIngress ? 'subtitle-ingress' : 'subtitle-midday'}`}>
+              {isEgress ? 'Night Egress & Safe Outflow Navigator' : isIngress ? 'Daytime Ingress & Campus Entry Radar' : 'Live Campus Concourse Navigator'}
+            </div>
 
             <p className="hero-description">
-              Live crowd radar for Alegria Festival. Entry via <strong>Gate 1</strong> (Girls &amp; VIPs / ID check) and <strong>Gate 2</strong> (Boys / security frisking).
+              {isEgress ? (
+                <>
+                  Celebrity concert wrapped. <strong>Gates 1 &amp; 2</strong> have flipped to rapid outbound corridors towards Panvel Railway Station &amp; Sector 16 Auto Loop.
+                </>
+              ) : isIngress ? (
+                <>
+                  Welcome to Alegria! Daytime festival entry is open via <strong>Gate 1</strong> (Girls &amp; VIP ticket scanning turnstiles) and <strong>Gate 2</strong> (Dedicated Boys frisking lane).
+                </>
+              ) : (
+                <>
+                  Live festival concourse radar for Alegria at Pillai Campus. Inter-stage transit flowing between Quadrangle, Sports Ground, and Canteen.
+                </>
+              )}
             </p>
           </div>
 
-          {/* Right Card: Smooth Departure Planner */}
+          {/* Right Card: Dynamic Entry / Departure Planner */}
           <div className="hero-right-col">
-            <div className="optimal-window-card glass-panel">
+            <div className={`optimal-window-card glass-panel ${isEgress ? 'theme-egress-card' : isIngress ? 'theme-ingress-card' : ''}`}>
               <div className="window-card-header">
-                <span className="window-label font-mono">SMOOTH DEPARTURE PLANNER</span>
+                <span className="window-label font-mono">
+                  {isEgress ? 'SMOOTH DEPARTURE & TRANSIT PLANNER' : 'LIVE GATE ACCESS & TURNSTILE RADAR'}
+                </span>
               </div>
 
               <div className="window-target-row">
-                <span className="target-time font-display">{egressAdvisory?.recommendedExitTarget || '21:30'}</span>
-                <span className="target-desc font-mono">Recommended Departure Time</span>
+                <span className="target-time font-display">
+                  {isEgress ? (egressAdvisory?.recommendedExitTarget || '21:45') : 'Gate 1 (Fastest)'}
+                </span>
+                <span className="target-desc font-mono">
+                  {isEgress ? 'Recommended Departure Time' : 'Estimated Wait: ~2 mins (4 Turnstiles)'}
+                </span>
               </div>
 
               <p className="window-advice font-body">
-                {egressAdvisory?.tacticalAdvice || `Based on our crowd prediction, heading out around ${egressAdvisory?.recommendedExitTarget || '21:30'} will give you a smooth exit. Leaving later may take extra time.`}
+                {isEgress
+                  ? (egressAdvisory?.tacticalAdvice || 'Head out via Gate 2 to reach Panvel Railway Station in 7 mins, bypassing the crowded Central Quad stairs.')
+                  : 'Gate 1 turnstiles have lowest queue for student ID and digital barcode passes. Unzip bags before entering security doorframe at Gate 2.'}
               </p>
 
-              <div className="delay-estimate-badge font-mono">
-                <Clock size={15} className="text-cyan" />
-                <span className="delay-text">
-                  Estimated extra walk time if leaving later (after {egressAdvisory?.busyDepartureTime || '22:00'}):
-                </span>
-                <strong className="delay-minutes-highlight">
-                  +{egressAdvisory?.estimatedExtraDelayMinutes || '15–20 mins'}
-                </strong>
-              </div>
+              {isEgress ? (
+                <div className="delay-estimate-badge font-mono">
+                  <Clock size={15} className="text-cyan" />
+                  <span className="delay-text">
+                    Extra walk time if leaving later (after {egressAdvisory?.busyDepartureTime || '22:15'}):
+                  </span>
+                  <strong className="delay-minutes-highlight">
+                    +{egressAdvisory?.estimatedExtraDelayMinutes || '15–20 mins'}
+                  </strong>
+                </div>
+              ) : (
+                <div className="delay-estimate-badge font-mono">
+                  <Zap size={15} className="text-success" />
+                  <span className="delay-text">Fast-Track Turnstile Lane:</span>
+                  <strong className="delay-minutes-highlight text-success">
+                    Gate 1 Scan Active
+                  </strong>
+                </div>
+              )}
 
-              <button
-                className={`btn-reminder-notification font-mono ${reminderSet ? 'set' : ''}`}
-                onClick={handleSetReminder}
-              >
-                <Bell size={15} />
-                <span>{reminderSet ? `REMINDER SET FOR ${egressAdvisory?.recommendedExitTarget || '21:30'}` : `Set Reminder for ${egressAdvisory?.recommendedExitTarget || '21:30'}`}</span>
-              </button>
+              {isEgress ? (
+                <button
+                  className={`btn-reminder-notification font-mono ${reminderSet ? 'set' : ''}`}
+                  onClick={handleSetReminder}
+                >
+                  <Bell size={15} />
+                  <span>{reminderSet ? `REMINDER SET FOR ${egressAdvisory?.recommendedExitTarget || '21:45'}` : `Set Departure Reminder (${egressAdvisory?.recommendedExitTarget || '21:45'})`}</span>
+                </button>
+              ) : (
+                <button
+                  className="btn-reminder-notification font-mono"
+                  onClick={() => handleDirectTo('zone-atrium-main')}
+                >
+                  <Navigation size={15} />
+                  <span>Directions to Gate 1 Turnstiles</span>
+                </button>
+              )}
             </div>
           </div>
         </section>
+
+        {/* Dynamic Festival Schedule & Time Travel Preview Bar */}
+        <div className="visitor-phase-tester glass-panel font-mono">
+          <div className="phase-tester-left">
+            <span className="tester-label">FESTIVAL SCHEDULE TIMELINE:</span>
+            <span className="tester-current">
+              <strong>
+                {festivalPhase?.phaseIcon || (isEgress ? '🌙' : isIngress ? '🌅' : '☀️')}{' '}
+                {festivalPhase?.phaseLabel || (isEgress ? 'Night Egress & Mass Exit' : isIngress ? 'Daytime Ingress' : 'Peak Concurrency')}
+              </strong>
+            </span>
+            <span className="tester-sub font-body">
+              {isEgress
+                ? 'Going Out Mode: Gates 1 & 2 turnstiles reversed for mass exit towards Panvel Station & Autos'
+                : isIngress
+                ? 'Coming In Mode: Gates 1 & 2 scanning incoming student passes & baggage'
+                : 'Circulation Mode: Standard internal concourse flows across stages'}
+            </span>
+          </div>
+
+          <div className="phase-tester-presets">
+            <span className="presets-label">TIME TRAVEL PREVIEW:</span>
+            <button
+              type="button"
+              className={`btn-tester-pill ${isIngress ? 'active' : ''}`}
+              onClick={() => handlePreviewPhase('INGRESS')}
+              title="Simulate Daytime Ingress (Entering through Gates)"
+            >
+              🌅 11:30 AM (Coming In)
+            </button>
+            <button
+              type="button"
+              className={`btn-tester-pill ${!isIngress && !isEgress ? 'active' : ''}`}
+              onClick={() => handlePreviewPhase('CIRCULATION')}
+              title="Simulate Peak Midday Concurrency"
+            >
+              ☀️ 4:30 PM (Midday Events)
+            </button>
+            <button
+              type="button"
+              className={`btn-tester-pill ${isEgress ? 'active' : ''}`}
+              onClick={() => handlePreviewPhase('EGRESS')}
+              title="Simulate Night Mass Egress (Going Out through Gates)"
+            >
+              🌙 9:45 PM (Going Out)
+            </button>
+          </div>
+        </div>
 
         {/* SECTION 2: Routing Assistant */}
         <section
@@ -897,6 +1035,8 @@ export default function VisitorGuidance({
             onSelectRouteType={setSelectedRouteType}
             onSelectOrigin={handleSelectOrigin}
             onSelectDest={handleSelectDest}
+            festivalPhase={festivalPhase}
+            gateStatuses={gateStatuses}
           />
         </section>
 
@@ -1470,6 +1610,21 @@ export default function VisitorGuidance({
           color: #0f172a;
           line-height: 1.15;
           letter-spacing: -0.02em;
+        }
+        .hero-mode-subtitle {
+          font-size: 1.18rem;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          margin-top: -4px;
+        }
+        .hero-mode-subtitle.subtitle-egress {
+          color: #ea580c;
+        }
+        .hero-mode-subtitle.subtitle-ingress {
+          color: #0284c7;
+        }
+        .hero-mode-subtitle.subtitle-midday {
+          color: #10b981;
         }
         .hero-description {
           font-size: 0.95rem;
@@ -3150,6 +3305,99 @@ export default function VisitorGuidance({
         .text-success { color: #059669; }
         .text-warning { color: #b45309; }
         .text-error { color: #e11d48; }
+
+        /* Dynamic Festival Operational Phase Switcher / Tester */
+        .visitor-phase-tester {
+          margin-top: 1rem;
+          margin-bottom: 0.75rem;
+          padding: 12px 18px;
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
+          box-shadow: 0 2px 8px rgba(100, 116, 139, 0.05);
+        }
+        .phase-tester-left {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .tester-label {
+          font-size: 0.62rem;
+          color: #64748b;
+          letter-spacing: 0.06em;
+        }
+        .tester-current {
+          font-size: 0.82rem;
+          color: #0f172a;
+        }
+        .tester-sub {
+          font-size: 0.7rem;
+          color: #64748b;
+        }
+        .phase-tester-presets {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .presets-label {
+          font-size: 0.62rem;
+          color: #94a3b8;
+          margin-right: 4px;
+        }
+        .btn-tester-pill {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 0.68rem;
+          font-weight: 700;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .btn-tester-pill:hover {
+          background: #f1f5f9;
+          color: #0f172a;
+          border-color: #cbd5e1;
+        }
+        .btn-tester-pill.active {
+          background: #e0f2fe;
+          border-color: #0284c7;
+          color: #0284c7;
+          box-shadow: 0 0 0 1px #0284c7;
+        }
+
+        .flow-guide-badge.badge-ingress {
+          background: #f0fdf4;
+          border-color: #bbf7d0;
+          color: #166534;
+        }
+        .flow-guide-badge.badge-egress {
+          background: #f0f9ff;
+          border-color: #bae6fd;
+          color: #0369a1;
+        }
+        .dot-live-status {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+        }
+        .dot-live-status.dot-green { background: #16a34a; box-shadow: 0 0 6px #22c55e; }
+        .dot-live-status.dot-cyan { background: #0284c7; box-shadow: 0 0 6px #38bdf8; }
+        .dot-live-status.dot-amber { background: #d97706; box-shadow: 0 0 6px #f59e0b; }
+
+        .optimal-window-card.theme-ingress-card {
+          border-left: 3px solid #10b981;
+        }
+        .optimal-window-card.theme-egress-card {
+          border-left: 3px solid #0284c7;
+        }
       `}</style>
     </div>
   );

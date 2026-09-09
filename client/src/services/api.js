@@ -194,4 +194,34 @@ export async function clearAuditLogs() {
   return res.json();
 }
 
+export async function updateClockState(options = {}) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/control/clock`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(options),
+  });
+  if (!res.ok) throw new Error('Failed to update simulation timeline');
+  return res.json();
+}
+
+export async function fetchGateStatuses() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/gates/status`, { headers });
+  if (!res.ok) return { operationalState: {}, gates: [] };
+  return res.json();
+}
+
+export async function toggleGateMode(gateId, targetMode) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/control/gates/toggle`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ gateId, targetMode }),
+  });
+  if (!res.ok) throw new Error('Failed to toggle gate operational mode');
+  return res.json();
+}
+
+
 

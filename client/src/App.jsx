@@ -5,7 +5,7 @@ import VisitorGuidance from './pages/VisitorGuidance';
 import AuthModal from './components/AuthModal';
 import { useAuth } from './context/AuthContext';
 import { socket } from './services/socket';
-import { fetchState, updateScenario, resetScenario, reseedDatabase } from './services/api';
+import { fetchState, updateScenario, resetScenario, reseedDatabase, updateClockState } from './services/api';
 import { ShieldAlert, ArrowRight } from 'lucide-react';
 
 export default function App() {
@@ -124,6 +124,18 @@ export default function App() {
     }
   };
 
+  const handleUpdateClock = async (options) => {
+    try {
+      const res = await updateClockState(options);
+      const freshState = await fetchState();
+      if (freshState) setSystemState(freshState);
+      return res;
+    } catch (err) {
+      console.error('Failed to update clock:', err);
+      throw err;
+    }
+  };
+
   return (
     <div className="app-root">
       {/* Global Navigation */}
@@ -148,8 +160,12 @@ export default function App() {
               recommendations={systemState.recommendations}
               forecast={systemState.forecast}
               whatIfOverrides={systemState.whatIfOverrides}
+              simulatedTime={systemState.simulatedTime}
+              festivalPhase={systemState.festivalPhase}
+              gateStatuses={systemState.gateStatuses}
               onUpdateScenario={handleUpdateScenario}
               onResetScenario={handleResetScenario}
+              onUpdateClock={handleUpdateClock}
             />
           ) : (
             <div className="clearance-guard-card glass-panel">
@@ -174,6 +190,10 @@ export default function App() {
             venues={systemState.venues}
             forecast={systemState.forecast}
             recommendations={systemState.recommendations}
+            simulatedTime={systemState.simulatedTime}
+            festivalPhase={systemState.festivalPhase}
+            gateStatuses={systemState.gateStatuses}
+            onUpdateClock={handleUpdateClock}
           />
         )}
       </main>

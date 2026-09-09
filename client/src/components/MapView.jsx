@@ -81,12 +81,17 @@ export default function MapView({
   onSelectRouteType = () => {},
   onSelectOrigin = () => {},
   onSelectDest = () => {},
+  festivalPhase = {},
+  gateStatuses = [],
 }) {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
   const [rampsOnly, setRampsOnly] = useState(false);
   const [activePopupNode, setActivePopupNode] = useState(null);
+
+  const isEgress = festivalPhase?.phase === 'EGRESS';
+  const isIngress = festivalPhase?.phase === 'INGRESS';
 
   // If visitor view, render the clean, uncluttered Light & Pastel Navigation Map
   if (isVisitorView) {
@@ -111,6 +116,26 @@ export default function MapView({
 
     return (
       <div className="campus-clean-map-card">
+        {/* Dynamic Operational Phase & Gate Direction Ribbon */}
+        <div className={`map-phase-ribbon font-mono ${isEgress ? 'egress-phase' : isIngress ? 'ingress-phase' : 'circulation-phase'}`}>
+          <div className="phase-ribbon-left">
+            <span className={`phase-dot-indicator ${isEgress ? 'dot-cyan' : isIngress ? 'dot-green' : 'dot-amber'}`}></span>
+            <span className="phase-title-bold">
+              {festivalPhase?.phaseIcon || (isEgress ? '🌙' : isIngress ? '🌅' : '☀️')}{' '}
+              {festivalPhase?.phaseLabel || (isEgress ? 'Night Egress & Mass Exit' : isIngress ? 'Daytime Ingress Rush' : 'Peak Concurrency')}
+            </span>
+            <span className="phase-sep-slash">/</span>
+            <span className="phase-flow-label">
+              {isEgress ? 'Outflow Active (Gates ➔ Station)' : isIngress ? 'Inflow Active (Station ➔ Gates)' : 'Circulation (Bidirectional)'}
+            </span>
+          </div>
+          <div className="phase-ribbon-right">
+            <span className="phase-gate-badge">
+              {isEgress ? '↑ GATES 1 & 2: REVERSE OUTFLOW' : isIngress ? '↓ GATES 1 & 2: ENTRY ONLY' : '⇅ GATES: BIDIRECTIONAL'}
+            </span>
+          </div>
+        </div>
+
         {/* Simple & Clean Header */}
         <div className="map-clean-header">
           <div className="map-title-wrap">
@@ -388,6 +413,63 @@ export default function MapView({
                 </g>
               );
             })}
+
+            {/* 6. Dynamic Festival Gate Flow & Direction Badges */}
+            {/* Gate 1 Direction Tag */}
+            <g transform="translate(200, 146)">
+              <rect
+                x="-78"
+                y="-13"
+                width="156"
+                height="24"
+                rx="12"
+                fill={isEgress ? '#ecfdf5' : '#eff6ff'}
+                stroke={isEgress ? '#10b981' : '#38bdf8'}
+                strokeWidth="1.5"
+                filter="drop-shadow(0 2px 4px rgba(0,0,0,0.06))"
+              />
+              <text x="0" y="4" fill={isEgress ? '#047857' : '#0284c7'} fontSize="9" fontFamily="Plus Jakarta Sans" fontWeight="800" textAnchor="middle">
+                {isEgress ? '↑ EXIT SURGE (340 p/m)' : '↓ ENTRY ONLY (Ticket Scan)'}
+              </text>
+            </g>
+
+            {/* Gate 2 Direction Tag */}
+            <g transform="translate(700, 146)">
+              <rect
+                x="-78"
+                y="-13"
+                width="156"
+                height="24"
+                rx="12"
+                fill={isEgress ? '#ecfdf5' : '#eff6ff'}
+                stroke={isEgress ? '#10b981' : '#38bdf8'}
+                strokeWidth="1.5"
+                filter="drop-shadow(0 2px 4px rgba(0,0,0,0.06))"
+              />
+              <text x="0" y="4" fill={isEgress ? '#047857' : '#0284c7'} fontSize="9" fontFamily="Plus Jakarta Sans" fontWeight="800" textAnchor="middle">
+                {isEgress ? '↑ RAPID EXIT (To Trains)' : '↓ ENTRY ONLY (Boys Check)'}
+              </text>
+            </g>
+
+            {/* Gate 3 Emergency Relief Tag (in Egress) */}
+            {isEgress && (
+              <g transform="translate(220, 482)">
+                <rect
+                  x="-82"
+                  y="-12"
+                  width="164"
+                  height="22"
+                  rx="11"
+                  fill="#fffbeb"
+                  stroke="#f59e0b"
+                  strokeWidth="1.5"
+                  filter="drop-shadow(0 2px 4px rgba(245, 158, 11, 0.15))"
+                />
+                <text x="0" y="3" fill="#b45309" fontSize="8.5" fontFamily="Plus Jakarta Sans" fontWeight="800" textAnchor="middle">
+                  ⚡ GATE 3 RELIEF OPEN (160 p/m)
+                </text>
+              </g>
+            )}
           </svg>
 
           {/* Quick Node Selector Modal on Click */}
@@ -454,6 +536,66 @@ export default function MapView({
             box-shadow: 0 4px 20px -2px rgba(100, 116, 139, 0.08);
             margin-top: 1rem;
           }
+
+          /* Dynamic Operational Phase Ribbon */
+          .map-phase-ribbon {
+            padding: 8px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            font-size: 0.68rem;
+            transition: all 0.2s ease;
+          }
+          .map-phase-ribbon.ingress-phase {
+            background: #f0fdf4;
+            color: #166534;
+            border-bottom-color: #bbf7d0;
+          }
+          .map-phase-ribbon.egress-phase {
+            background: #f0f9ff;
+            color: #0369a1;
+            border-bottom-color: #bae6fd;
+          }
+          .map-phase-ribbon.circulation-phase {
+            background: #fffbeb;
+            color: #92400e;
+            border-bottom-color: #fde68a;
+          }
+          .phase-ribbon-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+          .phase-dot-indicator {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+          }
+          .dot-green { background: #16a34a; box-shadow: 0 0 6px #22c55e; }
+          .dot-cyan { background: #0284c7; box-shadow: 0 0 6px #38bdf8; }
+          .dot-amber { background: #d97706; box-shadow: 0 0 6px #f59e0b; }
+          .phase-title-bold {
+            font-weight: 800;
+            letter-spacing: 0.04em;
+          }
+          .phase-sep-slash {
+            color: #cbd5e1;
+          }
+          .phase-flow-label {
+            font-weight: 600;
+          }
+          .phase-gate-badge {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 0.64rem;
+            letter-spacing: 0.04em;
+            border: 1px solid currentColor;
+          }
+
           .map-clean-header {
             padding: 14px 20px;
             background: #ffffff;
@@ -650,6 +792,24 @@ export default function MapView({
   // Otherwise, render the Organizer Geospatial Vector Radar from Image 1
   return (
     <div className="radar-panel-organizer glass-panel">
+      {/* Dynamic Operational Phase & Gate Telemetry Bar */}
+      <div className={`radar-phase-telemetry-bar font-mono ${isEgress ? 'telemetry-egress' : isIngress ? 'telemetry-ingress' : 'telemetry-circulation'}`}>
+        <div className="telemetry-bar-left">
+          <span className="telemetry-phase-pill">
+            {festivalPhase?.phaseIcon || (isEgress ? '🌙' : isIngress ? '🌅' : '☀️')}{' '}
+            {festivalPhase?.phaseLabel || (isEgress ? 'NIGHT EGRESS / MASS EXIT' : isIngress ? 'DAYTIME INGRESS RUSH' : 'PEAK CONCURRENCY')}
+          </span>
+          <span className="telemetry-flow-info">
+            GATE MODE: <strong>{isEgress ? 'REVERSE EGRESS (94% OUTFLOW)' : isIngress ? 'ENTRY TURNSTILES (88% INFLOW)' : 'BIDIRECTIONAL FLOW'}</strong>
+          </span>
+        </div>
+        <div className="telemetry-bar-right">
+          <span className="gate-flow-mini">G1: {isEgress ? '↑ 340 Out/m' : '↓ 230 In/m'}</span>
+          <span className="gate-flow-mini">G2: {isEgress ? '↑ 295 Out/m' : '↓ 195 In/m'}</span>
+          {isEgress && <span className="gate-flow-mini text-warning">G3: ⚡ 160 Out/m</span>}
+        </div>
+      </div>
+
       {/* Top HUD Controls Bar */}
       <div className="radar-top-hud">
         <div className="radar-tag font-mono">
@@ -719,9 +879,9 @@ export default function MapView({
           {/* Vector Corridors */}
           {showVectors && (
             <>
-              {/* Corridor North: Critical Red Flow */}
+              {/* Corridor North: Critical Flow */}
               <path
-                d="M 400 40 L 400 150"
+                d={isEgress ? "M 400 150 L 400 40" : "M 400 40 L 400 150"}
                 stroke="#e11d48"
                 strokeWidth="5"
                 strokeLinecap="round"
@@ -729,25 +889,25 @@ export default function MapView({
                 className="pulse-anim-corridor"
               />
               <text x="415" y="80" fill="#e11d48" fontSize="11" fontFamily="Geist Mono" fontWeight="700">
-                THE QUAD ⇄ MAIN ARENA (92% CHOKE)
+                {isEgress ? 'CENTRAL AXIS ➔ PANVEL TRANSIT (EGRESS SURGE)' : 'THE QUAD ⇄ MAIN ARENA (92% CHOKE)'}
               </text>
 
-              {/* Corridor East: Blue/Cyan Flow */}
-              <path d="M 660 300 L 550 300" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 4" />
+              {/* Corridor East: Gate 1 */}
+              <path d={isEgress ? "M 550 300 L 660 300" : "M 660 300 L 550 300"} stroke="#0284c7" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 4" />
               <text x="545" y="285" fill="#0284c7" fontSize="11" fontFamily="Geist Mono" fontWeight="700">
-                GATE 1 GIRLS/VIP FEEDER
+                {isEgress ? 'GATE 1: REVERSED TURNSTILES (340 p/m OUT)' : 'GATE 1: GIRLS/VIP INGRESS FEEDER (230 p/m)'}
               </text>
 
-              {/* Corridor South: Moderate Flow */}
-              <path d="M 400 550 L 400 440" stroke="#6366f1" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 4" />
+              {/* Corridor South: Gate 3 / Bypass */}
+              <path d={isEgress ? "M 400 440 L 400 550" : "M 400 550 L 400 440"} stroke="#6366f1" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 4" />
               <text x="415" y="520" fill="#6366f1" fontSize="11" fontFamily="Geist Mono" fontWeight="600">
-                CANTEEN ⇄ SPORTS GROUND BYPASS
+                {isEgress ? 'GATE 3 RELIEF EXIT VALVE (DISPERSAL ACTIVE)' : 'CANTEEN ⇄ SPORTS GROUND BYPASS'}
               </text>
 
-              {/* Corridor West: Heavy Orange/Yellow Flow */}
-              <path d="M 130 300 L 250 300" stroke="#d97706" strokeWidth="5" strokeLinecap="round" strokeDasharray="6 4" />
+              {/* Corridor West: Gate 2 */}
+              <path d={isEgress ? "M 250 300 L 130 300" : "M 130 300 L 250 300"} stroke="#d97706" strokeWidth="5" strokeLinecap="round" strokeDasharray="6 4" />
               <text x="135" y="285" fill="#d97706" fontSize="11" fontFamily="Geist Mono" fontWeight="700">
-                GATE 2 BOYS CORRIDOR
+                {isEgress ? 'GATE 2: DIRECT PANVEL STATION WALKING EGRESS' : 'GATE 2 BOYS CORRIDOR (INFLOW SCANNING)'}
               </text>
             </>
           )}
@@ -1036,6 +1196,61 @@ export default function MapView({
 
         .text-error { color: #e11d48; }
         .text-cyan { color: #0284c7; }
+
+        /* Dynamic Operational Phase & Gate Telemetry Bar */
+        .radar-phase-telemetry-bar {
+          padding: 8px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+          font-size: 0.68rem;
+          transition: all 0.2s ease;
+        }
+        .radar-phase-telemetry-bar.telemetry-ingress {
+          background: #f0fdf4;
+          color: #166534;
+          border-bottom-color: #bbf7d0;
+        }
+        .radar-phase-telemetry-bar.telemetry-egress {
+          background: #f0f9ff;
+          color: #0369a1;
+          border-bottom-color: #bae6fd;
+        }
+        .radar-phase-telemetry-bar.telemetry-circulation {
+          background: #fffbeb;
+          color: #92400e;
+          border-bottom-color: #fde68a;
+        }
+        .telemetry-bar-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .telemetry-phase-pill {
+          background: rgba(255, 255, 255, 0.95);
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+          border: 1px solid currentColor;
+        }
+        .telemetry-flow-info {
+          font-weight: 600;
+        }
+        .telemetry-bar-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .gate-flow-mini {
+          background: rgba(255, 255, 255, 0.9);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-weight: 700;
+          font-size: 0.62rem;
+          border: 1px solid rgba(148, 163, 184, 0.3);
+        }
       `}</style>
     </div>
   );

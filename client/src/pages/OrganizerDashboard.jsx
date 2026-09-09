@@ -22,7 +22,7 @@ import {
   Sliders,
   Check,
 } from 'lucide-react';
-import { fetchZoneTelemetry, broadcastAnnouncement, fetchAuditLogs, clearAuditLogs } from '../services/api';
+import { fetchZoneTelemetry, broadcastAnnouncement, fetchAuditLogs, clearAuditLogs, toggleGateMode } from '../services/api';
 
 export default function OrganizerDashboard({
   zones = [],
@@ -32,11 +32,19 @@ export default function OrganizerDashboard({
   recommendations = [],
   forecast = {},
   whatIfOverrides = {},
+  simulatedTime,
+  festivalPhase = {},
+  gateStatuses = [],
   onUpdateScenario,
   onResetScenario,
+  onUpdateClock,
 }) {
   const [selectedZoneId, setSelectedZoneId] = useState(null);
   const [showZoneMatrix, setShowZoneMatrix] = useState(true);
+  const [showGateControls, setShowGateControls] = useState(false);
+
+  const isEgress = festivalPhase?.phase === 'EGRESS';
+  const isIngress = festivalPhase?.phase === 'INGRESS';
 
   // Dynamic Shuttle Fleet Scaling State
   const [customShuttlePct, setCustomShuttlePct] = useState(40);
@@ -200,6 +208,33 @@ export default function OrganizerDashboard({
     setBroadcastToast(`⚡ Incident Action: ${summary}`);
     setTimeout(() => setBroadcastToast(null), 5000);
     loadAuditLogs();
+  };
+
+  const handlePhaseChange = async (phase) => {
+    try {
+      if (onUpdateClock) {
+        await onUpdateClock({ setPhase: phase });
+        const label = phase === 'INGRESS' ? 'Daytime Ingress (Entry)' : phase === 'EGRESS' ? 'Night Egress (Exit Surge)' : 'Peak Concurrency';
+        setBroadcastToast(`⏱️ Timeline shifted to ${label}. Gate turnstiles updated.`);
+        setTimeout(() => setBroadcastToast(null), 5000);
+        loadAuditLogs();
+      }
+    } catch (err) {
+      setBroadcastToast(`Phase update failed: ${err.message}`);
+      setTimeout(() => setBroadcastToast(null), 5000);
+    }
+  };
+
+  const handleGateToggle = async (gateId, targetMode) => {
+    try {
+      await toggleGateMode(gateId, targetMode);
+      setBroadcastToast(`🚪 ${gateId} turnstiles manually switched to ${targetMode}`);
+      setTimeout(() => setBroadcastToast(null), 5000);
+      loadAuditLogs();
+    } catch (err) {
+      setBroadcastToast(`Failed to toggle gate: ${err.message}`);
+      setTimeout(() => setBroadcastToast(null), 5000);
+    }
   };
 
   const getActionBadge = (action = '') => {
@@ -491,6 +526,186 @@ export default function OrganizerDashboard({
         </div>
       </div>
 
+      {/* Dynamic Festival Timeline & Operational Phase Ribbon */}
+      <div className={`organizer-phase-ribbon font-mono ${isEgress ? 'theme-egress-ribbon' : isIngress ? 'theme-ingress-ribbon' : 'theme-circulation-ribbon'}`}>
+        <div className="phase-ribbon-left">
+          <span className={`phase-live-beacon ${isEgress ? 'beacon-cyan' : isIngress ? 'beacon-green' : 'beacon-amber'}`}></span>
+          <span className="phase-badge-title">
+            {festivalPhase?.phaseIcon || (isEgress ? '🌙' : isIngress ? '🌅' : '☀️')}{' '}
+            {festivalPhase?.phaseLabel || (isEgress ? 'NIGHT EGRESS / MASS EXIT' : isIngress ? 'DAYTIME INGRESS RUSH' : 'PEAK CONCURRENCY')}
+          </span>
+          <span className="phase-sep">•</span>
+          <span className="phase-direction-detail">
+            GATE MODE: <strong>{isEgress ? 'REVERSE EGRESS (94% OUTFLOW)' : isIngress ? 'ENTRY TURNSTILES (88% INFLOW)' : 'BIDIRECTIONAL FLOW'}</strong>
+          </span>
+          <span className="phase-sep">•</span>
+          <span className="phase-time-display">SIMULATED TIME: <strong>{festivalPhase?.timeFormatted || '12:00'}</strong></span>
+        </div>
+
+        <div className="phase-ribbon-right">
+          <div className="phase-quick-jumps">
+            <span className="jump-label">TIMELINE JUMP:</span>
+            <button
+              type="button"
+              className={`btn-phase-jump ${isIngress ? 'active' : ''}`}
+              onClick={() => handlePhaseChange('INGRESS')}
+              title="Simulate Daytime Ingress (Entering through Gates)"
+            >
+              🌅 11:30 Ingress
+            </button>
+            <button
+              type="button"
+              className={`btn-phase-jump ${!isIngress && !isEgress ? 'active' : ''}`}
+              onClick={() => handlePhaseChange('CIRCULATION')}
+              title="Simulate Peak Midday Concurrency"
+            >
+              ☀️ 16:30 Peak
+            </button>
+            <button
+              type="button"
+              className={`btn-phase-jump ${isEgress ? 'active' : ''}`}
+              onClick={() => handlePhaseChange('EGRESS')}
+              title="Simulate Night Mass Egress (Going Out through Gates)"
+            >
+              🌙 21:45 Egress
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className={`btn-toggle-gates-deck ${showGateControls ? 'active' : ''}`}
+            onClick={() => setShowGateControls(!showGateControls)}
+            title="Open Gate Turnstile Flow Controllers"
+          >
+            <span>🚪</span>
+            <span>GATE CONTROLLERS ({gateStatuses.length || 3})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Collapsible Gate Turnstile Operations Deck */}
+      {showGateControls && (
+        <div className="gate-operations-deck glass-panel font-mono">
+          <div className="deck-header">
+            <div className="deck-title-group">
+              <span>🚪</span>
+              <span className="deck-title font-display">Campus Perimeter Gate Flow & Turnstile Controllers</span>
+              <span className="deck-sub font-mono">LIVE DUAL-DIRECTION THROUGHPUT TELEMETRY</span>
+            </div>
+            <button className="btn-deck-close" onClick={() => setShowGateControls(false)}>✕</button>
+          </div>
+
+          <div className="deck-cards-grid">
+            {/* Gate 1 Card */}
+            <div className={`gate-deck-card ${isEgress ? 'card-egress' : 'card-ingress'}`}>
+              <div className="gate-card-top">
+                <span className="gate-card-num">GATE 1</span>
+                <span className="gate-mode-pill">{isEgress ? '↑ EXIT SURGE' : '↓ ENTRY ONLY'}</span>
+              </div>
+              <h4 className="gate-card-title">Main Sector 16 Gate (Girls & VIPs)</h4>
+              <div className="gate-metrics-row">
+                <div className="gate-metric">
+                  <span className="gm-lbl">INFLOW</span>
+                  <span className="gm-val text-cyan">{isEgress ? '12 p/m' : '230 p/m'}</span>
+                </div>
+                <div className="gate-metric">
+                  <span className="gm-lbl">OUTFLOW</span>
+                  <span className="gm-val text-success">{isEgress ? '340 p/m' : '15 p/m'}</span>
+                </div>
+                <div className="gate-metric">
+                  <span className="gm-lbl">TURNSTILES</span>
+                  <span className="gm-val">4 Active</span>
+                </div>
+              </div>
+              <p className="gate-desc font-body">
+                {isEgress
+                  ? 'Turnstiles disengaged for continuous free outflow to Sector 16 Auto Loop.'
+                  : 'Barcode and Pillai RFID scanners active for incoming student authentication.'}
+              </p>
+              <div className="gate-card-actions">
+                <button
+                  type="button"
+                  className="btn-gate-flip"
+                  onClick={() => handleGateToggle('gate-1-main', isEgress ? 'ENTRY_ONLY' : 'EXIT_SURGE')}
+                >
+                  {isEgress ? '↺ Revert Gate 1 to Entry Mode' : '⚡ Flip Gate 1 to Exit Priority'}
+                </button>
+              </div>
+            </div>
+
+            {/* Gate 2 Card */}
+            <div className={`gate-deck-card ${isEgress ? 'card-egress' : 'card-ingress'}`}>
+              <div className="gate-card-top">
+                <span className="gate-card-num">GATE 2</span>
+                <span className="gate-mode-pill">{isEgress ? '↑ RAPID EXIT' : '↓ ENTRY ONLY'}</span>
+              </div>
+              <h4 className="gate-card-title">Back Cafeteria Gate (Boys Entry)</h4>
+              <div className="gate-metrics-row">
+                <div className="gate-metric">
+                  <span className="gm-lbl">INFLOW</span>
+                  <span className="gm-val text-cyan">{isEgress ? '8 p/m' : '195 p/m'}</span>
+                </div>
+                <div className="gate-metric">
+                  <span className="gm-lbl">OUTFLOW</span>
+                  <span className="gm-val text-success">{isEgress ? '295 p/m' : '10 p/m'}</span>
+                </div>
+                <div className="gate-metric">
+                  <span className="gm-lbl">CHECKPOINT</span>
+                  <span className="gm-val">{isEgress ? 'Free Egress' : '3 Frisking Lanes'}</span>
+                </div>
+              </div>
+              <p className="gate-desc font-body">
+                {isEgress
+                  ? 'Fast-track pedestrian lane to Panvel Railway Station (saves 6 mins walk).'
+                  : 'Metal detector doorframes and security bag frisking active.'}
+              </p>
+              <div className="gate-card-actions">
+                <button
+                  type="button"
+                  className="btn-gate-flip"
+                  onClick={() => handleGateToggle('gate-2-canteen', isEgress ? 'ENTRY_ONLY' : 'EXIT_SURGE')}
+                >
+                  {isEgress ? '↺ Revert Gate 2 to Entry Mode' : '⚡ Flip Gate 2 to Exit Priority'}
+                </button>
+              </div>
+            </div>
+
+            {/* Gate 3 Card */}
+            <div className="gate-deck-card card-emergency">
+              <div className="gate-card-top">
+                <span className="gate-card-num">GATE 3</span>
+                <span className="gate-mode-pill">{isEgress ? '⚡ RELIEF OPEN' : '🔒 STANDBY'}</span>
+              </div>
+              <h4 className="gate-card-title">Back Gymkhana / Emergency Corridor</h4>
+              <div className="gate-metrics-row">
+                <div className="gate-metric">
+                  <span className="gm-lbl">OUTFLOW</span>
+                  <span className="gm-val text-warning">{isEgress ? '160 p/m' : '0 p/m'}</span>
+                </div>
+                <div className="gate-metric">
+                  <span className="gm-lbl">PURPOSE</span>
+                  <span className="gm-val">Relief Valve</span>
+                </div>
+              </div>
+              <p className="gate-desc font-body">
+                {isEgress
+                  ? 'Double-wide gates swung open. Disperses crowds from Sports Ground directly to East Panvel.'
+                  : 'Secured padlocked gates reserved for emergency vehicles and production logistics.'}
+              </p>
+              <div className="gate-card-actions">
+                <button
+                  type="button"
+                  className="btn-gate-flip"
+                  onClick={() => handleGateToggle('gate-3-service', isEgress ? 'STANDBY' : 'EMERGENCY_OPEN')}
+                >
+                  {isEgress ? '🔒 Set Gate 3 to Standby' : '⚡ Swing Open Gate 3 Emergency Exit'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Broadcast Toast Feedback */}
       {broadcastToast && (
         <div className="broadcast-toast-strip font-mono">
@@ -663,6 +878,8 @@ export default function OrganizerDashboard({
               selectedZoneId={selectedZoneId}
               onSelectZone={setSelectedZoneId}
               isVisitorView={false}
+              festivalPhase={festivalPhase}
+              gateStatuses={gateStatuses}
             />
           </div>
 
@@ -1883,6 +2100,350 @@ export default function OrganizerDashboard({
           color: #64748b;
           padding: 1px 6px;
           border-radius: 3px;
+        }
+
+        /* ─── Dynamic Festival Phase Ribbon ─── */
+        .organizer-phase-ribbon {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 18px;
+          margin-bottom: 16px;
+          border-radius: 12px;
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          background: #ffffff;
+          box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+          gap: 16px;
+          flex-wrap: wrap;
+          transition: all 0.3s ease;
+        }
+
+        .organizer-phase-ribbon.theme-ingress-ribbon {
+          border-left: 5px solid #0284c7;
+          background: linear-gradient(90deg, rgba(240, 249, 255, 0.9) 0%, #ffffff 40%);
+        }
+
+        .organizer-phase-ribbon.theme-egress-ribbon {
+          border-left: 5px solid #f97316;
+          background: linear-gradient(90deg, rgba(255, 247, 237, 0.95) 0%, #ffffff 40%);
+        }
+
+        .organizer-phase-ribbon.theme-circulation-ribbon {
+          border-left: 5px solid #10b981;
+          background: linear-gradient(90deg, rgba(240, 253, 244, 0.9) 0%, #ffffff 40%);
+        }
+
+        .phase-ribbon-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 0.8rem;
+          color: #475569;
+          flex-wrap: wrap;
+        }
+
+        .phase-beacon-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          border-radius: 9999px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+        }
+
+        .badge-ingress {
+          background: #e0f2fe;
+          color: #0369a1;
+          border: 1px solid #bae6fd;
+        }
+
+        .badge-egress {
+          background: #ffedd5;
+          color: #c2410c;
+          border: 1px solid #fed7aa;
+        }
+
+        .badge-midday {
+          background: #ecfdf5;
+          color: #047857;
+          border: 1px solid #a7f3d0;
+        }
+
+        .phase-direction-detail strong {
+          color: #0f172a;
+          font-weight: 700;
+        }
+
+        .phase-time-display strong {
+          color: #0284c7;
+          font-weight: 700;
+          font-family: monospace;
+          background: #f1f5f9;
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
+
+        .phase-sep {
+          color: #cbd5e1;
+        }
+
+        .phase-ribbon-right {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+
+        .phase-quick-jumps {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .jump-label {
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #64748b;
+          letter-spacing: 0.03em;
+        }
+
+        .btn-phase-jump {
+          padding: 5px 12px;
+          border-radius: 8px;
+          font-size: 0.76rem;
+          font-weight: 600;
+          border: 1px solid #e2e8f0;
+          background: #f8fafc;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-phase-jump:hover {
+          background: #f1f5f9;
+          border-color: #cbd5e1;
+          color: #0f172a;
+        }
+
+        .btn-phase-jump.active {
+          background: #0284c7;
+          color: #ffffff;
+          border-color: #0284c7;
+          box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+        }
+
+        .btn-toggle-gates-deck {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          border-radius: 8px;
+          font-size: 0.76rem;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #1e293b;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-toggle-gates-deck:hover {
+          background: #f8fafc;
+          border-color: #94a3b8;
+        }
+
+        .btn-toggle-gates-deck.active {
+          background: #0f172a;
+          color: #ffffff;
+          border-color: #0f172a;
+        }
+
+        /* ─── Gate Turnstile Operations Deck ─── */
+        .gate-operations-deck {
+          margin-bottom: 18px;
+          padding: 18px 20px;
+          border-radius: 12px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+          animation: fadeIn 0.25s ease-out;
+        }
+
+        .deck-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid #f1f5f9;
+        }
+
+        .deck-title-group {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .deck-title {
+          font-size: 0.96rem;
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .deck-sub {
+          font-size: 0.68rem;
+          background: #f1f5f9;
+          color: #64748b;
+          padding: 2px 7px;
+          border-radius: 4px;
+          font-weight: 600;
+        }
+
+        .btn-deck-close {
+          background: transparent;
+          border: none;
+          color: #94a3b8;
+          font-size: 1.1rem;
+          cursor: pointer;
+          padding: 4px 8px;
+          border-radius: 6px;
+        }
+
+        .btn-deck-close:hover {
+          background: #f1f5f9;
+          color: #334155;
+        }
+
+        .deck-cards-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 16px;
+        }
+
+        .gate-deck-card {
+          padding: 16px;
+          border-radius: 10px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          transition: all 0.2s ease;
+        }
+
+        .gate-deck-card:hover {
+          border-color: #cbd5e1;
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+        }
+
+        .gate-deck-card.card-ingress {
+          border-top: 4px solid #0284c7;
+        }
+
+        .gate-deck-card.card-egress {
+          border-top: 4px solid #f97316;
+          background: #fffdfa;
+        }
+
+        .gate-deck-card.card-emergency {
+          border-top: 4px solid #eab308;
+        }
+
+        .gate-card-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .gate-card-num {
+          font-size: 0.72rem;
+          font-weight: 800;
+          color: #64748b;
+          letter-spacing: 0.06em;
+        }
+
+        .gate-mode-pill {
+          font-size: 0.7rem;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 9999px;
+          background: #ffffff;
+          border: 1px solid #cbd5e1;
+          color: #1e293b;
+        }
+
+        .gate-card-title {
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: #0f172a;
+          margin: 0;
+        }
+
+        .gate-metrics-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          background: #ffffff;
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .gate-metric {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          flex: 1;
+        }
+
+        .gm-lbl {
+          font-size: 0.62rem;
+          color: #64748b;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+        }
+
+        .gm-val {
+          font-size: 0.86rem;
+          font-weight: 700;
+          color: #1e293b;
+        }
+
+        .gate-desc {
+          font-size: 0.78rem;
+          color: #475569;
+          line-height: 1.4;
+          margin: 0;
+          flex: 1;
+        }
+
+        .gate-card-actions {
+          margin-top: 6px;
+        }
+
+        .btn-gate-flip {
+          width: 100%;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 0.76rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #1e293b;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-gate-flip:hover {
+          background: #0284c7;
+          color: #ffffff;
+          border-color: #0284c7;
+          box-shadow: 0 2px 8px rgba(2, 132, 199, 0.2);
         }
       `}</style>
     </div>

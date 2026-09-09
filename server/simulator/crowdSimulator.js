@@ -270,13 +270,27 @@ class CrowdSimulator {
    */
   advanceCrowdDynamics(stepMinutes) {
     const surge = this.whatIfOverrides.demandSurgeMultiplier || 1.0;
+    const opState = this.getFestivalOperationalState(this.simulatedTime);
+    const isEgress = opState.phase === 'EGRESS';
+    const isIngress = opState.phase === 'INGRESS';
 
     for (const [zoneId, zone] of this.zones) {
       const maxVenueCap = zone.totalCapacity?.venue || 10000;
       let occ = zone.liveMetrics.currentVenueOccupancy;
 
       // Small organic fluctuation (+/- 1.5% with surge bias)
-      const organicFluctuation = (Math.random() - 0.48) * 0.03 * maxVenueCap * surge;
+      let bias = -0.48;
+      if (isIngress) {
+        // Daytime influx bias towards campus
+        if (zoneId === 'zone-main-ground' || zoneId === 'zone-quadrangle') bias = -0.42;
+        if (zoneId === 'zone-panvel-transit') bias = -0.45;
+      } else if (isEgress) {
+        // Night exit bias towards gates and Panvel transit hub
+        if (zoneId === 'zone-main-ground') bias = -0.55;
+        if (zoneId === 'zone-panvel-transit' || zoneId === 'zone-atrium-main' || zoneId === 'zone-canteen-back') bias = -0.42;
+      }
+
+      const organicFluctuation = (Math.random() + bias) * 0.03 * maxVenueCap * surge;
       occ = Math.min(maxVenueCap * 1.1, Math.max(100, Math.round(occ + organicFluctuation)));
       zone.liveMetrics.currentVenueOccupancy = occ;
 
@@ -504,12 +518,199 @@ class CrowdSimulator {
     return this.whatIfOverrides;
   }
 
+  /**
+   * Calculates the current festival operational phase based on simulated clock.
+   */
+  getFestivalOperationalState(time = this.simulatedTime) {
+    const hours = time.getHours() + time.getMinutes() / 60;
+
+    // Ingress Phase: Morning until mid-afternoon (08:00 - 15:30)
+    if (hours >= 8 && hours < 15.5) {
+      return {
+        phase: 'INGRESS',
+        phaseLabel: 'Daytime Ingress & Arrival Rush',
+        phaseIcon: '🌅',
+        timeFormatted: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        gateMode: 'ENTRY_ONLY',
+        flowDirection: 'INCOMING',
+        flowLabel: 'Inflow to Campus (Panvel Depot ➔ Gates 1 & 2)',
+        ingressRatio: 0.88,
+        egressRatio: 0.12,
+        summary: 'Incoming attendee rush arriving from Panvel Station & Sector 16 Auto Loop. Turnstiles active for ticket scanning.',
+        tacticalAction: 'Route attendees to Gate 1 (fast turnstiles) to prevent Gate 2 frisking chokepoint.',
+      };
+    }
+
+    // Circulation Phase: Mid-afternoon to evening events (15:30 - 19:30)
+    if (hours >= 15.5 && hours < 19.5) {
+      return {
+        phase: 'CIRCULATION',
+        phaseLabel: 'Peak Event & Concurrency',
+        phaseIcon: '☀️',
+        timeFormatted: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        gateMode: 'BIDIRECTIONAL',
+        flowDirection: 'BALANCED',
+        flowLabel: 'Internal Venue Movement (Quad ⬄ Arena ⬄ Canteen)',
+        ingressRatio: 0.50,
+        egressRatio: 0.50,
+        summary: 'Competitions, flashmobs, and band battles active. High internal footfall between stages and food stalls.',
+        tacticalAction: 'Keep PICA Lawn bypass open for smooth transitions between Quad and Main Arena.',
+      };
+    }
+
+    // Egress Phase: Night concert conclusion and mass exit (19:30 - 24:00+ and 00:00 - 04:00)
+    return {
+      phase: 'EGRESS',
+      phaseLabel: 'Night Egress & Mass Exit Wave',
+      phaseIcon: '🌙',
+      timeFormatted: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      gateMode: 'EXIT_SURGE',
+      flowDirection: 'OUTGOING',
+      flowLabel: 'Reverse Outflow (Main Ground ➔ Gates 1 & 2 ➔ Station)',
+      ingressRatio: 0.06,
+      egressRatio: 0.94,
+      summary: 'Main stage EDM night concluding. Reverse surge towards Gates 1 & 2 and Panvel Railway Station & Auto Loop.',
+      tacticalAction: 'Turnstiles reversed to full outflow. Emergency Gate 3 active to bypass Central Quad bottleneck.',
+    };
+  }
+
+  /**
+   * Evaluates live status for all 3 campus gates depending on festival phase and overrides.
+   */
+  getGateStatuses(time = this.simulatedTime) {
+    const opState = this.getFestivalOperationalState(time);
+    const isEgress = opState.phase === 'EGRESS';
+    const isIngress = opState.phase === 'INGRESS';
+
+    const gate1Override = this.whatIfOverrides?.gateOverrides?.['gate-1-main'];
+    const gate3Override = this.whatIfOverrides?.gateOverrides?.['gate-3-service'];
+
+    const gate1Mode = gate1Override || (isEgress ? 'EXIT_SURGE' : isIngress ? 'ENTRY_ONLY' : 'BIDIRECTIONAL');
+    const gate2Mode = isEgress ? 'EXIT_SURGE' : isIngress ? 'ENTRY_ONLY' : 'BIDIRECTIONAL';
+    const gate3Mode = gate3Override || (isEgress ? 'EMERGENCY_OPEN' : 'STANDBY');
+
+    return [
+      {
+        id: 'gate-1-main',
+        name: 'Gate 1 (Main Sector 16 Gate)',
+        subName: 'Girls Entry, Artists & Atrium Turnstiles',
+        zoneId: 'zone-atrium-main',
+        mode: gate1Mode,
+        badgeText: gate1Mode === 'EXIT_SURGE'
+          ? '↑ EXIT SURGE (Turnstiles Flipped)'
+          : gate1Mode === 'ENTRY_ONLY'
+          ? '↓ ENTRY ONLY (Ticket Scanning)'
+          : '⇅ BIDIRECTIONAL ACCESS',
+        flowType: gate1Mode === 'EXIT_SURGE' ? 'outflow' : gate1Mode === 'ENTRY_ONLY' ? 'inflow' : 'mixed',
+        inflowRatePerMin: gate1Mode === 'EXIT_SURGE' ? 12 : isIngress ? 230 : 65,
+        outflowRatePerMin: gate1Mode === 'EXIT_SURGE' ? 340 : isIngress ? 15 : 55,
+        turnstilesActive: 4,
+        turnstileConfiguration: gate1Mode === 'EXIT_SURGE'
+          ? '4 Turnstiles Flipped to Free Outflow'
+          : '4 Turnstiles Scanning Barcodes & IDs',
+        queueWaitMinutes: gate1Mode === 'EXIT_SURGE' ? 0 : isIngress ? 3 : 1,
+        recommendation: isEgress
+          ? 'Clear outbound passage directly to Sector 16 Auto Loop and NMMT bus stop.'
+          : 'Fastest entry gate for Girls, VIPs, and barcode pre-scanners.',
+      },
+      {
+        id: 'gate-2-canteen',
+        name: 'Gate 2 (Back Cafeteria Gate)',
+        subName: 'Boys Entry & Canteen Walkway',
+        zoneId: 'zone-canteen-back',
+        mode: gate2Mode,
+        badgeText: gate2Mode === 'EXIT_SURGE'
+          ? '↑ RAPID EXIT CORRIDOR'
+          : gate2Mode === 'ENTRY_ONLY'
+          ? '↓ ENTRY ONLY (Frisking Active)'
+          : '⇅ BIDIRECTIONAL ACCESS',
+        flowType: gate2Mode === 'EXIT_SURGE' ? 'outflow' : gate2Mode === 'ENTRY_ONLY' ? 'inflow' : 'mixed',
+        inflowRatePerMin: gate2Mode === 'EXIT_SURGE' ? 8 : isIngress ? 195 : 50,
+        outflowRatePerMin: gate2Mode === 'EXIT_SURGE' ? 295 : isIngress ? 10 : 60,
+        turnstilesActive: 3,
+        turnstileConfiguration: gate2Mode === 'EXIT_SURGE'
+          ? 'Frisking Lanes Cleared for Rapid Egress'
+          : '3 Metal Detector Doorframes & Frisking Lanes',
+        queueWaitMinutes: gate2Mode === 'EXIT_SURGE' ? 0 : isIngress ? 6 : 2,
+        recommendation: isEgress
+          ? 'Fastest walking route to Panvel Railway Station (saves 6 mins walking vs Gate 1).'
+          : 'Dedicated Boys entry lane. Unzip bags before entering inspection doorframe.',
+      },
+      {
+        id: 'gate-3-service',
+        name: 'Gate 3 (Back Gymkhana / Emergency Gate)',
+        subName: 'Relief Dispersal & Service Corridor',
+        zoneId: 'zone-sports-ground',
+        mode: gate3Mode,
+        badgeText: gate3Mode === 'EMERGENCY_OPEN'
+          ? '⚡ RELIEF EXIT OPEN (Bypasses Quad Choke)'
+          : '🔒 STANDBY (Service Vehicles)',
+        flowType: gate3Mode === 'EMERGENCY_OPEN' ? 'outflow' : 'standby',
+        inflowRatePerMin: 0,
+        outflowRatePerMin: gate3Mode === 'EMERGENCY_OPEN' ? 160 : 0,
+        turnstilesActive: 0,
+        turnstileConfiguration: gate3Mode === 'EMERGENCY_OPEN'
+          ? 'Double Wide Gates Swung Open'
+          : 'Secured Padlocked Gates',
+        queueWaitMinutes: 0,
+        recommendation: gate3Mode === 'EMERGENCY_OPEN'
+          ? 'Use this gate to exit directly toward Khanda Colony / New Panvel East, bypassing Central Quad bottleneck.'
+          : 'Not available for regular student entry.',
+      },
+    ];
+  }
+
+  /**
+   * Sets the simulation clock directly or jumps to a festival operational phase.
+   */
+  setTimeOrPhase({ simulatedTime, targetHour, setPhase, gateOverrides }) {
+    if (simulatedTime) {
+      this.simulatedTime = new Date(simulatedTime);
+    } else if (typeof targetHour === 'number') {
+      const d = new Date(this.simulatedTime);
+      d.setHours(targetHour, 0, 0, 0);
+      this.simulatedTime = d;
+    } else if (setPhase) {
+      const d = new Date(this.simulatedTime);
+      if (setPhase === 'INGRESS') {
+        d.setHours(11, 30, 0, 0);
+      } else if (setPhase === 'CIRCULATION') {
+        d.setHours(16, 30, 0, 0);
+      } else if (setPhase === 'EGRESS') {
+        d.setHours(21, 45, 0, 0);
+      }
+      this.simulatedTime = d;
+    }
+
+    if (gateOverrides) {
+      this.whatIfOverrides.gateOverrides = {
+        ...(this.whatIfOverrides.gateOverrides || {}),
+        ...gateOverrides,
+      };
+    }
+
+    this.advanceCrowdDynamics(0);
+    this.evaluateIntelligence();
+
+    if (this.io) {
+      this.io.emit('live:tick', this.getClientPayload());
+    }
+
+    return {
+      simulatedTime: this.simulatedTime,
+      festivalPhase: this.getFestivalOperationalState(),
+      gateStatuses: this.getGateStatuses(),
+    };
+  }
+
   getClientPayload() {
     return {
       simulatedTime: this.simulatedTime,
       speedMultiplier: this.speedMultiplier,
       isPaused: this.isPaused,
       whatIfOverrides: this.whatIfOverrides,
+      festivalPhase: this.getFestivalOperationalState(),
+      gateStatuses: this.getGateStatuses(),
       zones: Array.from(this.zones.values()),
       venues: Array.from(this.venues.values()),
       transitEdges: Array.from(this.transitEdges.values()),
@@ -534,10 +735,20 @@ class CrowdSimulator {
       return { error: 'Invalid zone identifiers supplied' };
     }
 
-    // Gate operational intelligence based on origin zone
+    // Gate operational intelligence based on origin zone and festival phase
+    const opState = this.getFestivalOperationalState();
+    const isEgress = opState.phase === 'EGRESS';
+
     let gateOperationalInfo = null;
     if (fromZoneId === 'zone-atrium-main') {
-      gateOperationalInfo = {
+      gateOperationalInfo = isEgress ? {
+        gateName: 'Gate 1 (Main Sector 16 Exit Corridor)',
+        designatedFor: 'Fast Egress to Sector 16 Auto Loop & Shuttles',
+        checkpointType: 'Reversed Turnstiles (Disengaged Scanning)',
+        turnstileStatus: '4 Turnstiles Swung Open • Free Outflow',
+        estimatedWaitMinutes: 0,
+        studentTip: 'Turnstiles unlocked for continuous egress. NMMT feeder buses and share-autos boarding immediately outside on Sector 16 road.',
+      } : {
         gateName: 'Gate 1 (Sector 16 Front Main Gate)',
         designatedFor: 'Girls Entry, Artists, VIPs & Faculty',
         checkpointType: 'Pillai Student ID Scanners & Alegria Ticket Turnstiles',
@@ -546,7 +757,14 @@ class CrowdSimulator {
         studentTip: 'Have your Pillai ID barcode or digital Alegria ticket ready on your phone before stepping into the turnstile lane.',
       };
     } else if (fromZoneId === 'zone-canteen-back') {
-      gateOperationalInfo = {
+      gateOperationalInfo = isEgress ? {
+        gateName: 'Gate 2 (Back Cafeteria Exit Route)',
+        designatedFor: 'Direct Pedestrian Route to Panvel Railway Station',
+        checkpointType: 'Fast-Track Pedestrian Outflow Lane',
+        turnstileStatus: 'Security Frisking Disengaged • Continuous Egress',
+        estimatedWaitMinutes: 0,
+        studentTip: 'Fastest walking route to Panvel Railway Station (saves 6 mins walking vs Gate 1). Follow street lighting to station lane.',
+      } : {
         gateName: 'Gate 2 (Back Cafeteria Lane)',
         designatedFor: 'Dedicated Boys Entry',
         checkpointType: 'Security Metal Detector Doorframe, Frisking & Bag Checks',
@@ -555,7 +773,14 @@ class CrowdSimulator {
         studentTip: 'No outside open beverages or aerosol sprays permitted through Gate 2 security frisking.',
       };
     } else if (fromZoneId === 'zone-panvel-transit') {
-      gateOperationalInfo = {
+      gateOperationalInfo = isEgress ? {
+        gateName: 'Sector 16 Auto Loop & Panvel Station Depot',
+        designatedFor: 'Post-Concert Transit Departures',
+        checkpointType: 'Panvel Railway Station & Fast Auto Queue',
+        turnstileStatus: 'Trains & Autos boarding continuously',
+        estimatedWaitMinutes: 4,
+        studentTip: 'Harbor Line trains to CSMT and Trans-Harbor trains to Thane running till 00:45. Share-autos running continuous loops.',
+      } : {
         gateName: 'Sector 16 Auto Loop & Bus Depot',
         designatedFor: 'External Transit Feeder to Pillai Campus',
         checkpointType: 'Fixed Rate Share-Auto Stand (₹25-30) & NMMT Feeder Loop',

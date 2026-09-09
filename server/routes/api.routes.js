@@ -224,26 +224,99 @@ module.exports = function createApiRoutes(simulator) {
     res.json({ success: true, whatIfOverrides: reset, auditLog: log });
   });
 
-  // POST /api/control/clock - Pause/resume or change speed
-  router.post('/control/clock', requireRole('organizer'), async (req, res) => {
-    const { isPaused, speedMultiplier } = req.body;
+  // GET /api/gates/status - Real-time gate operational modes (Ingress vs Egress)
+  router.get('/gates/status', (req, res) => {
+    const operationalState = simulator.getFestivalOperationalState();
+    const gates = simulator.getGateStatuses();
+    res.json({ operationalState, gates });
+  });
+
+  // POST /api/control/clock - Pause/resume, speed, simulated time scrubbing, or phase jumps
+  router.post('/control/clock', async (req, res) => {
+    const { isPaused, speedMultiplier, simulatedTime, setPhase, targetHour, gateOverrides } = req.body;
     if (typeof isPaused === 'boolean') simulator.isPaused = isPaused;
     if (typeof speedMultiplier === 'number') simulator.speedMultiplier = speedMultiplier;
 
+    let timeUpdated = false;
+    if (simulatedTime || typeof targetHour === 'number' || setPhase || gateOverrides) {
+      simulator.setTimeOrPhase({ simulatedTime, targetHour, setPhase, gateOverrides });
+      timeUpdated = true;
+    }
+
+    const currentPhase = simulator.getFestivalOperationalState();
+    let actionType = 'CLOCK_CONTROL';
+    let summaryText = `Simulation clock ${simulator.isPaused ? 'paused' : 'running'} at ${simulator.speedMultiplier}x speed`;
+
+    if (setPhase) {
+      actionType = `PHASE_TRANSITION_${setPhase}`;
+      summaryText = `Shifted simulation operational timeline to ${currentPhase.phaseLabel} (${currentPhase.gateMode})`;
+    } else if (simulatedTime || typeof targetHour === 'number') {
+      actionType = 'TIMELINE_SCRUB';
+      summaryText = `Scrubbed festival time to ${currentPhase.timeFormatted} (${currentPhase.phaseLabel})`;
+    } else if (gateOverrides) {
+      actionType = 'GATE_MODE_OVERRIDE';
+      summaryText = `Manual turnstile override applied to campus gates: ${Object.keys(gateOverrides).join(', ')}`;
+    }
+
+    const userEmail = req.user?.email || 'attendee@crowdpulse.io';
     const log = await logAuditAction(
-      req.user.email,
-      'CLOCK_CONTROL',
+      userEmail,
+      actionType,
       {
-        summary: `Simulation clock ${simulator.isPaused ? 'paused' : 'running'} at ${simulator.speedMultiplier}x speed`,
+        summary: summaryText,
         isPaused: simulator.isPaused,
         speedMultiplier: simulator.speedMultiplier,
+        simulatedTime: simulator.simulatedTime,
+        phase: currentPhase.phase,
       }
     );
+
+    if (simulator.io) {
+      simulator.io.emit('live:tick', simulator.getClientPayload());
+    }
 
     res.json({
       success: true,
       isPaused: simulator.isPaused,
       speedMultiplier: simulator.speedMultiplier,
+      simulatedTime: simulator.simulatedTime,
+      festivalPhase: currentPhase,
+      gateStatuses: simulator.getGateStatuses(),
+      auditLog: log,
+    });
+  });
+
+  // POST /api/control/gates/toggle - Toggle specific gate between Entry, Exit, and Emergency modes
+  router.post('/control/gates/toggle', async (req, res) => {
+    const { gateId, targetMode } = req.body;
+    if (!gateId) {
+      return res.status(400).json({ error: 'gateId is required' });
+    }
+
+    simulator.whatIfOverrides.gateOverrides = {
+      ...(simulator.whatIfOverrides.gateOverrides || {}),
+      [gateId]: targetMode,
+    };
+
+    simulator.evaluateIntelligence();
+    if (simulator.io) {
+      simulator.io.emit('live:tick', simulator.getClientPayload());
+    }
+
+    const userEmail = req.user?.email || 'attendee@crowdpulse.io';
+    const log = await logAuditAction(
+      userEmail,
+      'GATE_TURNSTILE_OVERRIDE',
+      {
+        summary: `Manually set ${gateId} operational mode to ${targetMode}`,
+        gateId,
+        targetMode,
+      }
+    );
+
+    res.json({
+      success: true,
+      gateStatuses: simulator.getGateStatuses(),
       auditLog: log,
     });
   });
