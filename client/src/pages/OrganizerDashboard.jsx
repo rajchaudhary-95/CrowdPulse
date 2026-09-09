@@ -5,8 +5,6 @@ import AlertsFeed from '../components/AlertsFeed';
 import OptimizationPanel from '../components/OptimizationPanel';
 import WhatIfDrawer from '../components/WhatIfDrawer';
 import {
-  Maximize2,
-  Minimize2,
   Table,
   RotateCcw,
   Clock,
@@ -38,7 +36,6 @@ export default function OrganizerDashboard({
   onResetScenario,
 }) {
   const [selectedZoneId, setSelectedZoneId] = useState(null);
-  const [isZenMode, setIsZenMode] = useState(false);
   const [showZoneMatrix, setShowZoneMatrix] = useState(true);
 
   // Dynamic Shuttle Fleet Scaling State
@@ -134,13 +131,11 @@ export default function OrganizerDashboard({
     }
   };
 
-  // Keyboard shortcut listener ('F' for Zen Mode)
+  // Keyboard shortcut listener (Escape to clear selected zone)
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.key.toLowerCase() === 'f') {
-        setIsZenMode((prev) => !prev);
-      } else if (e.key === 'Escape') {
+      if (e.key === 'Escape') {
         setSelectedZoneId(null);
       }
     }
@@ -350,7 +345,7 @@ export default function OrganizerDashboard({
   ];
 
   return (
-    <div className={`organizer-view ${isZenMode ? 'zen-mode' : ''}`}>
+    <div className="organizer-view">
       {/* Sub-Header Operational Strip */}
       <div className="command-sub-bar">
         <div className="meta-strip-left font-mono">
@@ -492,13 +487,6 @@ export default function OrganizerDashboard({
           >
             <Table size={13} />
             <span>ZONE MATRIX</span>
-          </button>
-          <button
-            className="btn-intervention font-mono"
-            onClick={() => setIsZenMode(!isZenMode)}
-          >
-            {isZenMode ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-            <span>ZEN (F)</span>
           </button>
         </div>
       </div>
@@ -946,10 +934,6 @@ export default function OrganizerDashboard({
           display: flex;
           flex-direction: column;
           background: transparent;
-          transition: all 0.3s ease;
-        }
-        .organizer-view.zen-mode {
-          padding: 0;
         }
 
         .command-sub-bar {
