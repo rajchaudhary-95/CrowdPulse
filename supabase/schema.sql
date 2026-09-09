@@ -238,59 +238,69 @@ CREATE POLICY "Anyone can read visitor flow snapshots"
   USING (true);
 
 -- -----------------------------------------------------------------------------
--- 8. INITIAL SEED DATA (5 OLYMPIC COMPLEX ZONES & VENUES)
+-- 8. INITIAL SEED DATA (PILLAI ALEGRIA FESTIVAL ZONES, VENUES & EDGES)
 -- -----------------------------------------------------------------------------
 INSERT INTO public.zones (id, name, category, geo_center, geo_boundary, total_capacity, live_metrics, metadata)
 VALUES
 (
-  'zone-main-arena',
-  'Grand Olympic Arena Zone',
+  'zone-main-ground',
+  'Alegria Main Concert Ground',
   'venue_cluster',
-  '{"lat": 28.5865, "lng": 77.2345}'::JSONB,
-  '{"type": "Polygon", "coordinates": [[[28.5890, 77.2310], [28.5895, 77.2380], [28.5840, 77.2385], [28.5835, 77.2315]]]}'::JSONB,
-  '{"venue": 65000, "transit": 25000, "hospitality": 12000}'::JSONB,
-  '{"currentVenueOccupancy": 42000, "currentTransitPressure": 0.72, "currentHospitalityOccupancy": 8500, "compositeStressScore": 68, "status": "elevated"}'::JSONB,
-  '{"accessibilityScore": 98, "transitConnectedZoneIds": ["zone-transit-hub", "zone-promenade", "zone-north-courts"]}'::JSONB
+  '{"lat": 18.9908, "lng": 73.1282}'::JSONB,
+  '{"type": "Polygon", "coordinates": [[[18.9915, 73.1278], [18.9916, 73.1288], [18.9903, 73.1289], [18.9902, 73.1279]]]}'::JSONB,
+  '{"venue": 7000, "transit": 4000, "hospitality": 1500}'::JSONB,
+  '{"currentVenueOccupancy": 5850, "currentTransitPressure": 0.92, "currentHospitalityOccupancy": 1200, "compositeStressScore": 88, "status": "critical"}'::JSONB,
+  '{"accessibilityScore": 92, "transitConnectedZoneIds": ["zone-quadrangle", "zone-sports-ground"]}'::JSONB
 ),
 (
-  'zone-transit-hub',
-  'Central Intermodal Transit Hub',
+  'zone-quadrangle',
+  'The Central Quadrangle (The Quad)',
+  'venue_cluster',
+  '{"lat": 18.9902, "lng": 73.1277}'::JSONB,
+  '{"type": "Polygon", "coordinates": [[[18.9906, 73.1274], [18.9907, 73.1280], [18.9898, 73.1281], [18.9897, 73.1275]]]}'::JSONB,
+  '{"venue": 2500, "transit": 3500, "hospitality": 1200}'::JSONB,
+  '{"currentVenueOccupancy": 1850, "currentTransitPressure": 0.68, "currentHospitalityOccupancy": 850, "compositeStressScore": 66, "status": "elevated"}'::JSONB,
+  '{"accessibilityScore": 98, "transitConnectedZoneIds": ["zone-main-ground", "zone-canteen-back", "zone-atrium-main"]}'::JSONB
+),
+(
+  'zone-canteen-back',
+  'Campus Canteen & Boys Gate 2',
+  'hospitality',
+  '{"lat": 18.9895, "lng": 73.1272}'::JSONB,
+  '{"type": "Polygon", "coordinates": [[[18.9899, 73.1268], [18.9900, 73.1275], [18.9890, 73.1276], [18.9889, 73.1269]]]}'::JSONB,
+  '{"venue": 1800, "transit": 2500, "hospitality": 2000}'::JSONB,
+  '{"currentVenueOccupancy": 1100, "currentTransitPressure": 0.48, "currentHospitalityOccupancy": 1400, "compositeStressScore": 46, "status": "normal"}'::JSONB,
+  '{"accessibilityScore": 95, "transitConnectedZoneIds": ["zone-quadrangle", "zone-panvel-transit", "zone-sports-ground"]}'::JSONB
+),
+(
+  'zone-atrium-main',
+  'Engineering Atrium & Girls/Artist Gate 1',
+  'venue_cluster',
+  '{"lat": 18.9900, "lng": 73.1280}'::JSONB,
+  '{"type": "Polygon", "coordinates": [[[18.9904, 73.1278], [18.9905, 73.1285], [18.9895, 73.1286], [18.9894, 73.1279]]]}'::JSONB,
+  '{"venue": 2000, "transit": 3500, "hospitality": 800}'::JSONB,
+  '{"currentVenueOccupancy": 1350, "currentTransitPressure": 0.54, "currentHospitalityOccupancy": 450, "compositeStressScore": 52, "status": "normal"}'::JSONB,
+  '{"accessibilityScore": 100, "transitConnectedZoneIds": ["zone-quadrangle", "zone-panvel-transit"]}'::JSONB
+),
+(
+  'zone-sports-ground',
+  'PICA Lawn & Sports Ground',
+  'buffer',
+  '{"lat": 18.9912, "lng": 73.1270}'::JSONB,
+  '{"type": "Polygon", "coordinates": [[[18.9918, 73.1265], [18.9919, 73.1274], [18.9907, 73.1275], [18.9906, 73.1266]]]}'::JSONB,
+  '{"venue": 2000, "transit": 1500, "hospitality": 1500}'::JSONB,
+  '{"currentVenueOccupancy": 550, "currentTransitPressure": 0.22, "currentHospitalityOccupancy": 400, "compositeStressScore": 24, "status": "normal"}'::JSONB,
+  '{"accessibilityScore": 90, "transitConnectedZoneIds": ["zone-main-ground", "zone-canteen-back"]}'::JSONB
+),
+(
+  'zone-panvel-transit',
+  'Panvel Station & Sector 16 Transit Hub',
   'transit_hub',
-  '{"lat": 28.5805, "lng": 77.2280}'::JSONB,
-  '{"type": "Polygon", "coordinates": [[[28.5825, 77.2250], [28.5830, 77.2310], [28.5780, 77.2315], [28.5775, 77.2255]]]}'::JSONB,
-  '{"venue": 8000, "transit": 45000, "hospitality": 6000}'::JSONB,
-  '{"currentVenueOccupancy": 3200, "currentTransitPressure": 0.86, "currentHospitalityOccupancy": 4100, "compositeStressScore": 78, "status": "warning"}'::JSONB,
-  '{"accessibilityScore": 95, "transitConnectedZoneIds": ["zone-main-arena", "zone-fan-park", "zone-promenade"]}'::JSONB
-),
-(
-  'zone-fan-park',
-  'Olympic Village Fan Festival Park',
-  'fan_zone',
-  '{"lat": 28.5765, "lng": 77.2370}'::JSONB,
-  '{"type": "Polygon", "coordinates": [[[28.5790, 77.2335], [28.5795, 77.2410], [28.5740, 77.2415], [28.5735, 77.2340]]]}'::JSONB,
-  '{"venue": 35000, "transit": 18000, "hospitality": 20000}'::JSONB,
-  '{"currentVenueOccupancy": 15200, "currentTransitPressure": 0.42, "currentHospitalityOccupancy": 11400, "compositeStressScore": 44, "status": "normal"}'::JSONB,
-  '{"accessibilityScore": 92, "transitConnectedZoneIds": ["zone-transit-hub", "zone-promenade"]}'::JSONB
-),
-(
-  'zone-promenade',
-  'Grand Concourse & Food Promenade',
-  'pedestrian_corridor',
-  '{"lat": 28.5820, "lng": 77.2355}'::JSONB,
-  '{"type": "Polygon", "coordinates": [[[28.5840, 77.2335], [28.5845, 77.2385], [28.5800, 77.2380], [28.5795, 77.2330]]]}'::JSONB,
-  '{"venue": 15000, "transit": 12000, "hospitality": 18000}'::JSONB,
-  '{"currentVenueOccupancy": 6800, "currentTransitPressure": 0.52, "currentHospitalityOccupancy": 9200, "compositeStressScore": 51, "status": "normal"}'::JSONB,
-  '{"accessibilityScore": 99, "transitConnectedZoneIds": ["zone-main-arena", "zone-transit-hub", "zone-fan-park", "zone-north-courts"]}'::JSONB
-),
-(
-  'zone-north-courts',
-  'North Aquatic Center & Practice Courts',
-  'auxiliary_venue',
-  '{"lat": 28.5915, "lng": 77.2310}'::JSONB,
-  '{"type": "Polygon", "coordinates": [[[28.5940, 77.2280], [28.5945, 77.2345], [28.5895, 77.2350], [28.5890, 77.2285]]]}'::JSONB,
-  '{"venue": 18000, "transit": 10000, "hospitality": 5000}'::JSONB,
-  '{"currentVenueOccupancy": 5100, "currentTransitPressure": 0.35, "currentHospitalityOccupancy": 2100, "compositeStressScore": 32, "status": "normal"}'::JSONB,
-  '{"accessibilityScore": 90, "transitConnectedZoneIds": ["zone-main-arena", "zone-promenade"]}'::JSONB
+  '{"lat": 18.9915, "lng": 73.1220}'::JSONB,
+  '{"type": "Polygon", "coordinates": [[[18.9930, 73.1205], [18.9935, 73.1235], [18.9900, 73.1240], [18.9895, 73.1210]]]}'::JSONB,
+  '{"venue": 3000, "transit": 10000, "hospitality": 3000}'::JSONB,
+  '{"currentVenueOccupancy": 2200, "currentTransitPressure": 0.65, "currentHospitalityOccupancy": 1700, "compositeStressScore": 58, "status": "normal"}'::JSONB,
+  '{"accessibilityScore": 96, "transitConnectedZoneIds": ["zone-atrium-main", "zone-canteen-back"]}'::JSONB
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -302,28 +312,28 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO public.venues (id, name, zone_id, location, capacity, scheduled_events)
 VALUES
 (
-  'venue-main-stadium',
-  'Olympic Main Stadium',
-  'zone-main-arena',
-  '{"lat": 28.5868, "lng": 77.2348}'::JSONB,
-  60000,
-  '[{"eventId": "evt-finals-01", "name": "Men 100m Sprint Finals", "category": "Athletics", "attendanceExpected": 58000, "status": "in_progress"}]'::JSONB
+  'venue-alegria-main-stage',
+  'Alegria Main Concert Arena (Sports Ground)',
+  'zone-main-ground',
+  '{"lat": 18.9908, "lng": 73.1282}'::JSONB,
+  7000,
+  '[{"eventId": "evt-alegria-edm-night", "name": "Celebrity Headliner & DJ EDM Night", "category": "Concert", "attendanceExpected": 6800, "status": "upcoming"}]'::JSONB
 ),
 (
-  'venue-fan-stage',
-  'Live Concert Stage & Beer Garden',
-  'zone-fan-park',
-  '{"lat": 28.5760, "lng": 77.2375}'::JSONB,
-  25000,
-  '[{"eventId": "evt-concert-01", "name": "Sunset Electronic Symphony", "category": "Live Concert", "attendanceExpected": 18000, "status": "scheduled"}]'::JSONB
+  'venue-quad-stage',
+  'The Quadrangle Cultural Stage',
+  'zone-quadrangle',
+  '{"lat": 18.9902, "lng": 73.1277}'::JSONB,
+  2500,
+  '[{"eventId": "evt-alegria-flashmob", "name": "Alegria Mega Flashmob & Battle of the Bands", "category": "Cultural", "attendanceExpected": 2300, "status": "upcoming"}]'::JSONB
 ),
 (
-  'venue-aquatic-center',
-  'North Aquatic Center',
-  'zone-north-courts',
-  '{"lat": 28.5918, "lng": 77.2315}'::JSONB,
-  15000,
-  '[{"eventId": "evt-swim-01", "name": "4x100m Freestyle Relay Heats", "category": "Swimming", "attendanceExpected": 12500, "status": "scheduled"}]'::JSONB
+  'venue-atrium-hall',
+  'Engineering Concourse & Atrium Arena',
+  'zone-atrium-main',
+  '{"lat": 18.9900, "lng": 73.1280}'::JSONB,
+  2000,
+  '[{"eventId": "evt-alegria-fashion", "name": "Mr. & Ms. Alegria Fashion Night & Tech Showcase", "category": "Fashion/Showcase", "attendanceExpected": 1700, "status": "upcoming"}]'::JSONB
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -332,11 +342,14 @@ ON CONFLICT (id) DO UPDATE SET
 -- Transit Edges Seed
 INSERT INTO public.transit_edges (id, source_zone_id, target_zone_id, mode, capacity_per_hour, current_flow_rate, congestion_index, status, polyline)
 VALUES
-('edge-hub-arena-shuttle', 'zone-transit-hub', 'zone-main-arena', 'express_shuttle', 14000, 11800, 0.84, 'congested', '[[28.5805, 77.2280], [28.5830, 77.2300], [28.5865, 77.2345]]'::JSONB),
-('edge-hub-fanpark-shuttle', 'zone-transit-hub', 'zone-fan-park', 'express_shuttle', 12000, 5200, 0.43, 'optimal', '[[28.5805, 77.2280], [28.5780, 77.2320], [28.5765, 77.2370]]'::JSONB),
-('edge-promenade-walkway', 'zone-promenade', 'zone-main-arena', 'pedestrian_walkway', 16000, 9100, 0.57, 'optimal', '[[28.5820, 77.2355], [28.5840, 77.2350], [28.5865, 77.2345]]'::JSONB),
-('edge-fanpark-promenade', 'zone-fan-park', 'zone-promenade', 'pedestrian_walkway', 15000, 7400, 0.49, 'optimal', '[[28.5765, 77.2370], [28.5790, 77.2360], [28.5820, 77.2355]]'::JSONB),
-('edge-arena-north-courts', 'zone-main-arena', 'zone-north-courts', 'pedestrian_walkway', 10000, 3100, 0.31, 'optimal', '[[28.5865, 77.2345], [28.5890, 77.2330], [28.5915, 77.2310]]'::JSONB)
+('edge-depot-maingate', 'zone-panvel-transit', 'zone-atrium-main', 'shuttle_bus', 4000, 2600, 0.65, 'moderate', '[[18.9915, 73.1220], [18.9908, 73.1250], [18.9900, 73.1280]]'::JSONB),
+('edge-depot-canteengate', 'zone-panvel-transit', 'zone-canteen-back', 'pedestrian_walkway', 3500, 1800, 0.51, 'moderate', '[[18.9915, 73.1220], [18.9905, 73.1245], [18.9895, 73.1272]]'::JSONB),
+('edge-maingate-quad', 'zone-atrium-main', 'zone-quadrangle', 'pedestrian_walkway', 5000, 3100, 0.62, 'moderate', '[[18.9900, 73.1280], [18.9901, 73.1278], [18.9902, 73.1277]]'::JSONB),
+('edge-canteengate-quad', 'zone-canteen-back', 'zone-quadrangle', 'pedestrian_walkway', 4500, 2200, 0.49, 'moderate', '[[18.9895, 73.1272], [18.9899, 73.1274], [18.9902, 73.1277]]'::JSONB),
+('edge-quad-mainground', 'zone-quadrangle', 'zone-main-ground', 'pedestrian_walkway', 5500, 5100, 0.92, 'gridlock', '[[18.9902, 73.1277], [18.9905, 73.1280], [18.9908, 73.1282]]'::JSONB),
+('edge-canteen-sports', 'zone-canteen-back', 'zone-sports-ground', 'pedestrian_walkway', 4000, 1100, 0.28, 'free_flow', '[[18.9895, 73.1272], [18.9904, 73.1269], [18.9912, 73.1270]]'::JSONB),
+('edge-emergency-gate3', 'zone-main-ground', 'zone-sports-ground', 'shuttle_bus', 2000, 400, 0.20, 'free_flow', '[[18.9908, 73.1282], [18.9910, 73.1275], [18.9912, 73.1270]]'::JSONB)
 ON CONFLICT (id) DO UPDATE SET
   capacity_per_hour = EXCLUDED.capacity_per_hour,
   current_flow_rate = EXCLUDED.current_flow_rate;
+

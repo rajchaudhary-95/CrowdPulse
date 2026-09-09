@@ -1,49 +1,70 @@
 import React, { useState } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, Circle, Popup, Tooltip, useMap } from 'react-leaflet';
-import { Users, AlertTriangle, Bus, TrendingUp, Flame, Compass, Shield, MapPin, Maximize2 } from 'lucide-react';
+import { Compass, Flame, Eye, Navigation, MapPin, AlertTriangle, CheckCircle, Footprints, Shield, Sparkles, Sliders } from 'lucide-react';
 
-// Helper to resolve stress color
-function getStressColor(stressScore) {
-  if (stressScore >= 88) return '#ef4444'; // Red (Critical)
-  if (stressScore >= 75) return '#f97316'; // Orange (Warning)
-  if (stressScore >= 60) return '#f59e0b'; // Amber (Elevated)
-  return '#10b981'; // Green (Normal)
-}
-
-function getEdgeColor(congestionLevel) {
-  switch (congestionLevel) {
-    case 'gridlock': return '#ef4444';
-    case 'heavy': return '#f97316';
-    case 'moderate': return '#38bdf8';
-    case 'free_flow':
-    default: return '#10b981';
-  }
-}
-
-// Emergency evacuation corridors for mega-event perimeter
-const EVACUATION_CORRIDORS = [
-  {
-    id: 'evac-corridor-north',
-    name: 'North Emergency Egress Corridor',
-    path: [[28.5865, 77.2345], [28.5915, 77.2310], [28.5960, 77.2280]],
+// Pillai College of Engineering (New Panvel) Authentic Campus Nodes
+const CAMPUS_NODES = {
+  'zone-panvel-transit': {
+    id: 'zone-panvel-transit',
+    x: 450,
+    y: 55,
+    name: 'Panvel Station / Auto Loop',
+    shortName: 'Sector 16 Depot',
+    icon: '🚖',
   },
-  {
-    id: 'evac-corridor-south',
-    name: 'South Rapid Medical Evac Route',
-    path: [[28.5805, 77.2280], [28.5765, 77.2370], [28.5720, 77.2400]],
+  'zone-atrium-main': {
+    id: 'zone-atrium-main',
+    x: 200,
+    y: 190,
+    name: 'Engineering Atrium & Gate 1',
+    shortName: 'Gate 1 (Main Entry)',
+    icon: '🚪',
   },
+  'zone-canteen-back': {
+    id: 'zone-canteen-back',
+    x: 700,
+    y: 190,
+    name: 'Campus Canteen & Gate 2',
+    shortName: 'Gate 2 (Boys Entry)',
+    icon: '🍔',
+  },
+  'zone-quadrangle': {
+    id: 'zone-quadrangle',
+    x: 450,
+    y: 280,
+    name: 'The Central Quadrangle',
+    shortName: 'The Quadrangle',
+    icon: '⚠️',
+  },
+  'zone-sports-ground': {
+    id: 'zone-sports-ground',
+    x: 220,
+    y: 435,
+    name: 'PICA Architecture Lawn',
+    shortName: 'PICA Lawn',
+    icon: '🌿',
+  },
+  'zone-main-ground': {
+    id: 'zone-main-ground',
+    x: 680,
+    y: 435,
+    name: 'Alegria Main Concert Ground',
+    shortName: 'Alegria Main Arena',
+    icon: '🎸',
+  },
+};
+
+// True Campus Walkways & Edges
+const CAMPUS_EDGES = [
+  { id: 'edge-depot-maingate', from: 'zone-panvel-transit', to: 'zone-atrium-main', label: 'Sector 16 Loop' },
+  { id: 'edge-depot-canteengate', from: 'zone-panvel-transit', to: 'zone-canteen-back', label: 'Sector 16 Loop' },
+  { id: 'edge-maingate-canteen', from: 'zone-atrium-main', to: 'zone-canteen-back', label: 'Covered Internal Arcade' },
+  { id: 'edge-maingate-quad', from: 'zone-atrium-main', to: 'zone-quadrangle', label: 'Atrium Concourse' },
+  { id: 'edge-canteengate-quad', from: 'zone-canteen-back', to: 'zone-quadrangle', label: 'Canteen Concourse' },
+  { id: 'edge-atrium-sports', from: 'zone-atrium-main', to: 'zone-sports-ground', label: 'PICA Architecture Ramp (Step-Free)' },
+  { id: 'edge-canteen-sports', from: 'zone-canteen-back', to: 'zone-sports-ground', label: 'Turf Connector' },
+  { id: 'edge-quad-mainground', from: 'zone-quadrangle', to: 'zone-main-ground', label: 'Arena Concourse (Central Axis)' },
+  { id: 'edge-sports-mainground', from: 'zone-sports-ground', to: 'zone-main-ground', label: 'North Lawn Ramp (Free Flow)' },
 ];
-
-// Helper component to center map smoothly
-function MapRecenter({ center, zoom }) {
-  const map = useMap();
-  React.useEffect(() => {
-    if (center) {
-      map.flyTo(center, zoom || map.getZoom(), { duration: 1.2 });
-    }
-  }, [center, zoom, map]);
-  return null;
-}
 
 export default function MapView({
   zones = [],
@@ -53,465 +74,968 @@ export default function MapView({
   selectedZoneId = null,
   onSelectZone = () => {},
   isVisitorView = false,
+  routeData = null,
+  originZone = 'zone-atrium-main',
+  destZone = 'zone-main-ground',
+  selectedRouteType = 'recommended',
+  onSelectRouteType = () => {},
+  onSelectOrigin = () => {},
+  onSelectDest = () => {},
 }) {
-  const defaultCenter = [28.5835, 77.2350];
-  const defaultZoom = 14;
-
-  // Active layer visibility toggles
+  const [zoomLevel, setZoomLevel] = useState(1);
   const [showHeatmap, setShowHeatmap] = useState(true);
-  const [showTransit, setShowTransit] = useState(true);
-  const [showEvac, setShowEvac] = useState(false);
-  const [showZones, setShowZones] = useState(true);
+  const [showVectors, setShowVectors] = useState(true);
+  const [rampsOnly, setRampsOnly] = useState(false);
+  const [activePopupNode, setActivePopupNode] = useState(null);
 
-  const zoneForecasts = forecast?.zoneForecasts || {};
+  // If visitor view, render the clean, uncluttered Light & Pastel Navigation Map
+  if (isVisitorView) {
+    const recommendedNodes = routeData?.recommendedRoute?.pathNodes || [originZone, destZone];
+    const standardNodes = routeData?.standardRoute?.pathNodes || [];
 
-  // Resolve selected zone coordinates if any
-  const selectedZone = zones.find((z) => (z._id || z.id) === selectedZoneId);
-  const targetCenter = selectedZone?.geoCenter
-    ? [selectedZone.geoCenter.lat, selectedZone.geoCenter.lng]
-    : null;
+    // Helper: Build SVG path string from an array of zone IDs
+    const buildPathD = (nodeIds) => {
+      if (!nodeIds || nodeIds.length < 2) return '';
+      const points = nodeIds.map((id) => CAMPUS_NODES[id] || { x: 450, y: 250 });
+      return points.reduce((acc, pt, idx) => {
+        if (idx === 0) return `M ${pt.x} ${pt.y}`;
+        return `${acc} L ${pt.x} ${pt.y}`;
+      }, '');
+    };
 
-  return (
-    <div className="map-view-wrapper glass-panel">
-      {/* Map Header & Multi-Layer Control Bar */}
-      <div className="map-header">
-        <div className="map-title-row">
-          <span className="map-badge">GEOSPATIAL LIVE PERIMETER</span>
-          <div className="map-legend">
-            <span className="legend-item"><span className="legend-dot normal"></span> Nominal (&lt;60%)</span>
-            <span className="legend-item"><span className="legend-dot elevated"></span> Elevated (60-75%)</span>
-            <span className="legend-item"><span className="legend-dot warning"></span> Warning (75-88%)</span>
-            <span className="legend-item"><span className="legend-dot critical"></span> Critical (&gt;88%)</span>
+    const recommendedPathD = buildPathD(recommendedNodes);
+    const standardPathD = buildPathD(standardNodes);
+
+    const originNode = CAMPUS_NODES[originZone] || { shortName: originZone };
+    const destNode = CAMPUS_NODES[destZone] || { shortName: destZone };
+
+    return (
+      <div className="campus-clean-map-card">
+        {/* Simple & Clean Header */}
+        <div className="map-clean-header">
+          <div className="map-title-wrap">
+            <h3 className="map-clean-title font-display">Campus Navigation Map</h3>
+            <span className="map-clean-subtitle font-mono">
+              <strong>{originNode.shortName}</strong> &rarr; <strong>{destNode.shortName}</strong>
+            </span>
+          </div>
+
+          {/* Route Switcher Pills */}
+          <div className="map-route-pills font-mono">
+            <button
+              type="button"
+              className={`route-pill-btn ${selectedRouteType === 'recommended' ? 'active-rec' : ''}`}
+              onClick={() => onSelectRouteType('recommended')}
+            >
+              <span>🌿 Recommended</span>
+              {routeData?.recommendedRoute?.totalMinutes && (
+                <span className="pill-min">({routeData.recommendedRoute.totalMinutes}m)</span>
+              )}
+            </button>
+            {routeData?.standardRoute && (
+              <button
+                type="button"
+                className={`route-pill-btn ${selectedRouteType === 'standard' ? 'active-std' : ''}`}
+                onClick={() => onSelectRouteType('standard')}
+              >
+                <span>🚶 Direct</span>
+                <span className="pill-min">({routeData.standardRoute.totalMinutes}m)</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Tactical Layer Toggle Toolbar */}
-        <div className="layer-toolbar">
+        {/* Campus Map SVG Canvas */}
+        <div className="map-canvas-container">
+          <svg
+            className="wayfinding-svg"
+            viewBox="0 0 900 480"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              {/* Subtle architectural dot grid */}
+              <pattern id="clean-campus-dots" width="24" height="24" patternUnits="userSpaceOnUse">
+                <circle cx="12" cy="12" r="1" fill="#cbd5e1" opacity="0.6" />
+              </pattern>
+
+              {/* Glowing Route Gradient (Path 1 Recommended) */}
+              <linearGradient id="recommended-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#0284c7" />
+                <stop offset="50%" stopColor="#0ea5e9" />
+                <stop offset="100%" stopColor="#10b981" />
+              </linearGradient>
+
+              {/* Glowing Route Gradient (Path 2 Direct Concourse) */}
+              <linearGradient id="standard-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#f59e0b" />
+                <stop offset="100%" stopColor="#ea580c" />
+              </linearGradient>
+            </defs>
+
+            {/* Canvas Base Grid */}
+            <rect width="100%" height="100%" fill="#f8fafc" />
+            <rect width="100%" height="100%" fill="url(#clean-campus-dots)" />
+
+            {/* Campus Boundary Outline */}
+            <rect
+              x="50"
+              y="20"
+              width="800"
+              height="440"
+              rx="16"
+              fill="none"
+              stroke="#e2e8f0"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+            />
+            <text x="70" y="42" fill="#94a3b8" fontSize="10" fontFamily="Geist Mono" fontWeight="600" letterSpacing="0.06em">
+              CAMPUS GROUNDS &bull; NEW PANVEL
+            </text>
+
+            {/* 1. Base Campus Walkway Connectors */}
+            {CAMPUS_EDGES.map((edge) => {
+              const from = CAMPUS_NODES[edge.from];
+              const to = CAMPUS_NODES[edge.to];
+              if (!from || !to) return null;
+
+              return (
+                <line
+                  key={edge.id}
+                  x1={from.x}
+                  y1={from.y}
+                  x2={to.x}
+                  y2={to.y}
+                  stroke="#cbd5e1"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  opacity="0.7"
+                />
+              );
+            })}
+
+            {/* 2. Render Inactive Route (Soft Dashed Line) */}
+            {selectedRouteType === 'standard' && recommendedPathD && recommendedPathD !== standardPathD && (
+              <g style={{ cursor: 'pointer' }} onClick={() => onSelectRouteType('recommended')}>
+                <path
+                  d={recommendedPathD}
+                  stroke="#94a3b8"
+                  strokeWidth="3"
+                  strokeDasharray="6 6"
+                  strokeLinecap="round"
+                  opacity="0.5"
+                />
+              </g>
+            )}
+            {selectedRouteType === 'recommended' && standardPathD && standardPathD !== recommendedPathD && (
+              <g style={{ cursor: 'pointer' }} onClick={() => onSelectRouteType('standard')}>
+                <path
+                  d={standardPathD}
+                  stroke="#fcd34d"
+                  strokeWidth="3"
+                  strokeDasharray="6 6"
+                  strokeLinecap="round"
+                  opacity="0.6"
+                />
+              </g>
+            )}
+
+            {/* 3. Render Active Route with Flow Glow */}
+            {selectedRouteType === 'standard' && standardPathD && (
+              <g>
+                <path
+                  d={standardPathD}
+                  stroke="rgba(245, 158, 11, 0.2)"
+                  strokeWidth="12"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d={standardPathD}
+                  stroke="url(#standard-grad)"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d={standardPathD}
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                  strokeDasharray="6 10"
+                  strokeLinecap="round"
+                  className="animated-flow-dash"
+                />
+              </g>
+            )}
+
+            {selectedRouteType === 'recommended' && recommendedPathD && (
+              <g>
+                <path
+                  d={recommendedPathD}
+                  stroke="rgba(14, 165, 233, 0.18)"
+                  strokeWidth="12"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d={recommendedPathD}
+                  stroke="url(#recommended-grad)"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d={recommendedPathD}
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                  strokeDasharray="6 10"
+                  strokeLinecap="round"
+                  className="animated-flow-dash"
+                />
+              </g>
+            )}
+
+            {/* 4. Central Quad Concourse (Simple, Clean Busy Warning) */}
+            <g transform="translate(450, 280)">
+              <rect
+                x="-80"
+                y="-14"
+                width="160"
+                height="28"
+                rx="14"
+                fill="#fffbeb"
+                stroke="#fde68a"
+                strokeWidth="1.5"
+                filter="drop-shadow(0 2px 4px rgba(245, 158, 11, 0.1))"
+              />
+              <text x="0" y="4" fill="#b45309" fontSize="10" fontFamily="Plus Jakarta Sans" fontWeight="700" textAnchor="middle">
+                ⚠️ Central Quad (Busy)
+              </text>
+            </g>
+
+            {/* 5. Minimalist Campus Location Badges */}
+            {Object.values(CAMPUS_NODES).map((node) => {
+              if (node.id === 'zone-quadrangle') return null;
+
+              const isOrigin = node.id === originZone;
+              const isDest = node.id === destZone;
+              const isRecommendedHop = recommendedNodes.includes(node.id);
+
+              const pillWidth = isOrigin ? 150 : isDest ? 150 : 130;
+              const pillHeight = 32;
+
+              return (
+                <g
+                  key={node.id}
+                  transform={`translate(${node.x}, ${node.y})`}
+                  className="campus-clean-node"
+                  onClick={() => setActivePopupNode(node)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {/* Outer subtle pulse glow for Origin and Dest */}
+                  {isOrigin && (
+                    <circle cx="0" cy="0" r="28" fill="rgba(2, 132, 199, 0.15)" className="pulse-ring" />
+                  )}
+                  {isDest && (
+                    <circle cx="0" cy="0" r="28" fill="rgba(16, 185, 129, 0.18)" className="pulse-ring" />
+                  )}
+
+                  {/* Clean Pill Shape */}
+                  <rect
+                    x={-pillWidth / 2}
+                    y={-pillHeight / 2}
+                    width={pillWidth}
+                    height={pillHeight}
+                    rx={pillHeight / 2}
+                    fill={
+                      isOrigin
+                        ? '#0284c7'
+                        : isDest
+                        ? '#059669'
+                        : isRecommendedHop
+                        ? '#f0f9ff'
+                        : '#ffffff'
+                    }
+                    stroke={
+                      isOrigin
+                        ? '#0369a1'
+                        : isDest
+                        ? '#047857'
+                        : isRecommendedHop
+                        ? '#38bdf8'
+                        : '#e2e8f0'
+                    }
+                    strokeWidth={isOrigin || isDest ? 1.5 : 1.5}
+                    filter="drop-shadow(0 2px 6px rgba(15, 23, 42, 0.08))"
+                  />
+
+                  {/* Clean Node Text */}
+                  <text
+                    x="0"
+                    y="4"
+                    fill={isOrigin || isDest ? '#ffffff' : isRecommendedHop ? '#0369a1' : '#1e293b'}
+                    fontSize="10.5"
+                    fontFamily="Plus Jakarta Sans"
+                    fontWeight="700"
+                    textAnchor="middle"
+                  >
+                    {isOrigin
+                      ? `🚩 ${node.shortName}`
+                      : isDest
+                      ? `🎯 ${node.shortName}`
+                      : `${node.icon} ${node.shortName}`}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Quick Node Selector Modal on Click */}
+          {activePopupNode && (
+            <div
+              className="clean-map-modal font-mono"
+              style={{
+                top: Math.min(270, activePopupNode.y - 45),
+                left: Math.min(650, Math.max(70, activePopupNode.x - 100)),
+              }}
+            >
+              <div className="modal-title-row">
+                <span className="font-bold text-dark">{activePopupNode.name}</span>
+                <button className="btn-close-modal" onClick={() => setActivePopupNode(null)}>✕</button>
+              </div>
+              <div className="modal-btns-row">
+                <button
+                  className="btn-loc-set origin"
+                  onClick={() => {
+                    onSelectOrigin(activePopupNode.id);
+                    setActivePopupNode(null);
+                  }}
+                >
+                  🚩 Set as Start
+                </button>
+                <button
+                  className="btn-loc-set dest"
+                  onClick={() => {
+                    onSelectDest(activePopupNode.id);
+                    setActivePopupNode(null);
+                  }}
+                >
+                  🎯 Set as Destination
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Minimalist 2-Item Legend */}
+          <div className="clean-legend font-mono">
+            <div
+              className={`legend-pill ${selectedRouteType === 'recommended' ? 'active' : ''}`}
+              onClick={() => onSelectRouteType('recommended')}
+            >
+              <span className="legend-dot rec"></span>
+              <span>Recommended Path</span>
+            </div>
+            <div
+              className={`legend-pill ${selectedRouteType === 'standard' ? 'active' : ''}`}
+              onClick={() => onSelectRouteType('standard')}
+            >
+              <span className="legend-dot std"></span>
+              <span>Direct Path</span>
+            </div>
+          </div>
+        </div>
+
+        <style>{`
+          .campus-clean-map-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px -2px rgba(100, 116, 139, 0.08);
+            margin-top: 1rem;
+          }
+          .map-clean-header {
+            padding: 14px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+          .map-clean-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0;
+          }
+          .map-clean-subtitle {
+            font-size: 0.72rem;
+            color: #64748b;
+          }
+          .map-clean-subtitle strong {
+            color: #0f172a;
+          }
+          .map-route-pills {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .route-pill-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.15s ease;
+          }
+          .route-pill-btn:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #0f172a;
+          }
+          .route-pill-btn.active-rec {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+            color: #047857;
+          }
+          .route-pill-btn.active-std {
+            background: #fffbeb;
+            border-color: #fde68a;
+            color: #b45309;
+          }
+          .pill-min {
+            font-weight: 800;
+            opacity: 0.9;
+          }
+
+          .map-canvas-container {
+            height: 450px;
+            position: relative;
+            background: #f8fafc;
+            overflow: hidden;
+          }
+          .wayfinding-svg {
+            width: 100%;
+            height: 100%;
+          }
+          .animated-flow-dash {
+            animation: dashFlow 1.2s linear infinite;
+          }
+          @keyframes dashFlow {
+            from { stroke-dashoffset: 32; }
+            to { stroke-dashoffset: 0; }
+          }
+          .pulse-ring {
+            animation: pulseRing 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+          }
+          @keyframes pulseRing {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 0.15; }
+            100% { transform: scale(0.9); opacity: 0.8; }
+          }
+          .campus-clean-node:hover rect {
+            transform: scale(1.04);
+            transition: transform 0.15s ease;
+          }
+
+          .clean-map-modal {
+            position: absolute;
+            z-index: 25;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 10px 12px;
+            width: 210px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+          }
+          .modal-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.76rem;
+            margin-bottom: 8px;
+          }
+          .btn-close-modal {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.8rem;
+          }
+          .btn-close-modal:hover {
+            color: #0f172a;
+          }
+          .modal-btns-row {
+            display: flex;
+            gap: 6px;
+          }
+          .btn-loc-set {
+            flex: 1;
+            padding: 5px 6px;
+            border-radius: 6px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+          }
+          .btn-loc-set.origin {
+            background: #e0f2fe;
+            color: #0369a1;
+            border-color: #bae6fd;
+          }
+          .btn-loc-set.dest {
+            background: #ecfdf5;
+            color: #047857;
+            border-color: #a7f3d0;
+          }
+          .btn-loc-set:hover {
+            filter: brightness(0.96);
+          }
+
+          .clean-legend {
+            position: absolute;
+            bottom: 14px;
+            left: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid #e2e8f0;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+          }
+          .legend-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 12px;
+            transition: color 0.15s ease;
+          }
+          .legend-pill:hover,
+          .legend-pill.active {
+            color: #0f172a;
+          }
+          .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+          }
+          .legend-dot.rec {
+            background: #0ea5e9;
+          }
+          .legend-dot.std {
+            background: #f59e0b;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Otherwise, render the Organizer Geospatial Vector Radar from Image 1
+  return (
+    <div className="radar-panel-organizer glass-panel">
+      {/* Top HUD Controls Bar */}
+      <div className="radar-top-hud">
+        <div className="radar-tag font-mono">
+          <span className="pulse-dot-cyan"></span>
+          <span>GEOSPATIAL VECTOR RADAR ●</span>
+        </div>
+
+        <div className="radar-hud-tools font-mono">
           <button
-            className={`layer-toggle-btn ${showHeatmap ? 'active' : ''}`}
+            className={`hud-btn ${showVectors ? 'active' : ''}`}
+            onClick={() => setShowVectors(!showVectors)}
+          >
+            VECTORS: {showVectors ? 'ON' : 'OFF'}
+          </button>
+          <button
+            className={`hud-btn ${showHeatmap ? 'active' : ''}`}
             onClick={() => setShowHeatmap(!showHeatmap)}
-            title="Toggle Continuous Crowd Density Heatmap"
           >
-            <Flame size={13} />
-            <span>Heatmap</span>
+            HEATMAP
           </button>
-
+          <div className="hud-divider"></div>
           <button
-            className={`layer-toggle-btn ${showTransit ? 'active' : ''}`}
-            onClick={() => setShowTransit(!showTransit)}
-            title="Toggle Live Transit Flow Polylines"
+            className="hud-zoom-btn"
+            onClick={() => setZoomLevel((prev) => Math.min(1.4, prev + 0.15))}
           >
-            <Compass size={13} />
-            <span>Transit Flow</span>
+            +
           </button>
-
           <button
-            className={`layer-toggle-btn ${showEvac ? 'active' : ''}`}
-            onClick={() => setShowEvac(!showEvac)}
-            title="Toggle Emergency Evacuation Corridors"
+            className="hud-zoom-btn"
+            onClick={() => setZoomLevel((prev) => Math.max(0.7, prev - 0.15))}
           >
-            <Shield size={13} />
-            <span>Evacuation Routes</span>
-          </button>
-
-          <button
-            className={`layer-toggle-btn ${showZones ? 'active' : ''}`}
-            onClick={() => setShowZones(!showZones)}
-            title="Toggle Venue Perimeter Polygons"
-          >
-            <MapPin size={13} />
-            <span>Venues</span>
+            -
           </button>
         </div>
       </div>
 
-      <div className="map-canvas-container">
-        <MapContainer
-          center={defaultCenter}
-          zoom={defaultZoom}
-          scrollWheelZoom={true}
-          attributionControl={false}
-          className="leaflet-map-canvas"
+      {/* Main Vector Radar Canvas */}
+      <div className="organizer-canvas-container">
+        {showHeatmap && (
+          <>
+            <div className="heat-glow red-heat-glow" />
+            <div className="heat-glow cyan-heat-glow" />
+          </>
+        )}
+
+        <svg
+          className="organizer-radar-svg"
+          viewBox="0 0 800 600"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ transform: `scale(${zoomLevel})` }}
         >
-          {targetCenter && <MapRecenter center={targetCenter} zoom={15} />}
+          {/* Concentric Radar Rings */}
+          <circle cx="400" cy="300" r="240" stroke="rgba(148, 163, 184, 0.22)" strokeWidth="1.5" strokeDasharray="4 4" />
+          <circle cx="400" cy="300" r="180" stroke="rgba(148, 163, 184, 0.12)" strokeWidth="20" opacity="0.6" />
+          <circle cx="400" cy="300" r="120" stroke="rgba(148, 163, 184, 0.25)" strokeWidth="1" />
+          <circle cx="400" cy="300" r="50" stroke="rgba(99, 102, 241, 0.35)" strokeWidth="1" strokeDasharray="2 2" fill="rgba(99, 102, 241, 0.05)" />
 
-          {/* Dark / Clean OpenStreetMap Tile Layer */}
-          <TileLayer
-            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maxZoom={18}
-          />
+          {/* Stadium Structure */}
+          <ellipse cx="400" cy="300" rx="140" ry="110" fill="#ffffff" stroke="rgba(203, 213, 225, 0.9)" strokeWidth="2" filter="drop-shadow(0 4px 16px rgba(100, 116, 139, 0.08))" />
+          <ellipse cx="400" cy="300" rx="80" ry="55" fill="#ede9fe" stroke="#818cf8" strokeWidth="1.5" />
 
-          {/* 1. Heatmap Layer: Density Blobs around Zone Centers */}
-          {showHeatmap && zones.map((zone) => {
-            if (!zone.geoCenter) return null;
-            const stress = zone.liveMetrics?.compositeStressScore || 50;
-            const heatRadius = Math.max(160, Math.min(420, (stress / 100) * 400));
-            const heatColor = getStressColor(stress);
+          {/* Crosshairs Lines */}
+          <line x1="400" y1="50" x2="400" y2="550" stroke="rgba(148, 163, 184, 0.18)" strokeWidth="1" strokeDasharray="2 2" />
+          <line x1="150" y1="300" x2="650" y2="300" stroke="rgba(148, 163, 184, 0.18)" strokeWidth="1" strokeDasharray="2 2" />
 
-            return (
-              <Circle
-                key={`heat-${zone._id || zone.id}`}
-                center={[zone.geoCenter.lat, zone.geoCenter.lng]}
-                radius={heatRadius}
-                pathOptions={{
-                  fillColor: heatColor,
-                  fillOpacity: Math.min(0.45, 0.15 + (stress / 100) * 0.3),
-                  color: heatColor,
-                  weight: 1,
-                  opacity: 0.5,
-                }}
+          {/* Vector Corridors */}
+          {showVectors && (
+            <>
+              {/* Corridor North: Critical Red Flow */}
+              <path
+                d="M 400 40 L 400 150"
+                stroke="#e11d48"
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray="8 6"
+                className="pulse-anim-corridor"
               />
-            );
-          })}
+              <text x="415" y="80" fill="#e11d48" fontSize="11" fontFamily="Geist Mono" fontWeight="700">
+                THE QUAD ⇄ MAIN ARENA (92% CHOKE)
+              </text>
 
-          {/* 2. Transit Edges (Polylines) */}
-          {showTransit && transitEdges.map((edge) => {
-            const edgeColor = getEdgeColor(edge.liveStatus?.congestionLevel);
-            const isSelected = selectedZoneId && (edge.fromZoneId === selectedZoneId || edge.toZoneId === selectedZoneId);
+              {/* Corridor East: Blue/Cyan Flow */}
+              <path d="M 660 300 L 550 300" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 4" />
+              <text x="545" y="285" fill="#0284c7" fontSize="11" fontFamily="Geist Mono" fontWeight="700">
+                GATE 1 GIRLS/VIP FEEDER
+              </text>
 
-            return (
-              <Polyline
-                key={edge._id || edge.id}
-                positions={edge.pathCoordinates || []}
-                pathOptions={{
-                  color: edgeColor,
-                  weight: isSelected ? 5.5 : 3.8,
-                  opacity: isSelected ? 0.95 : 0.75,
-                  dashArray: edge.mode === 'metro' ? '6, 6' : null,
-                }}
-              >
-                <Popup>
-                  <div className="popup-card">
-                    <h4 className="popup-title">{edge.name}</h4>
-                    <p className="popup-subtitle">Mode: <strong>{edge.mode?.replace(/_/g, ' ').toUpperCase()}</strong></p>
-                    <div className="popup-stat-grid">
-                      <div className="popup-stat">
-                        <span className="stat-label">Flow / hr</span>
-                        <span className="stat-val">{edge.liveStatus?.currentFlowPerHour?.toLocaleString()}</span>
-                      </div>
-                      <div className="popup-stat">
-                        <span className="stat-label">Utilization</span>
-                        <span className="stat-val">{Math.round((edge.liveStatus?.utilizationRate || 0) * 100)}%</span>
-                      </div>
-                      <div className="popup-stat">
-                        <span className="stat-label">Status</span>
-                        <span className={`stat-val ${edge.liveStatus?.congestionLevel}`}>
-                          {edge.liveStatus?.congestionLevel?.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Popup>
-              </Polyline>
-            );
-          })}
+              {/* Corridor South: Moderate Flow */}
+              <path d="M 400 550 L 400 440" stroke="#6366f1" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 4" />
+              <text x="415" y="520" fill="#6366f1" fontSize="11" fontFamily="Geist Mono" fontWeight="600">
+                CANTEEN ⇄ SPORTS GROUND BYPASS
+              </text>
 
-          {/* 3. Emergency Evacuation Corridors */}
-          {showEvac && EVACUATION_CORRIDORS.map((corridor) => (
-            <Polyline
-              key={corridor.id}
-              positions={corridor.path}
-              pathOptions={{
-                color: '#10b981',
-                weight: 4,
-                opacity: 0.9,
-                dashArray: '8, 8',
-              }}
-            >
-              <Tooltip sticky>
-                <span style={{ fontWeight: 700, color: '#10b981' }}>🛡️ {corridor.name} (Clear)</span>
-              </Tooltip>
-            </Polyline>
-          ))}
+              {/* Corridor West: Heavy Orange/Yellow Flow */}
+              <path d="M 130 300 L 250 300" stroke="#d97706" strokeWidth="5" strokeLinecap="round" strokeDasharray="6 4" />
+              <text x="135" y="285" fill="#d97706" fontSize="11" fontFamily="Geist Mono" fontWeight="700">
+                GATE 2 BOYS CORRIDOR
+              </text>
+            </>
+          )}
 
-          {/* 4. Zone Boundaries & Venues */}
-          {showZones && zones.map((zone) => {
-            const zid = zone._id || zone.id;
-            const isSelected = selectedZoneId === zid;
-            const stressScore = zone.liveMetrics?.compositeStressScore || 0;
-            const zoneColor = getStressColor(stressScore);
-            const boundaryCoords = zone.geoBoundary?.coordinates?.[0]?.map((coord) => [coord[1], coord[0]]) || [];
-            const forecastData = zoneForecasts[zid];
+          {/* Gate Portals */}
+          {/* Main Concert Stage North */}
+          <g transform="translate(370, 140)" className="cursor-pointer" onClick={() => onSelectZone('zone-main-ground')}>
+            <rect width="60" height="20" rx="4" fill="#e11d48" />
+            <text x="6" y="14" fill="#ffffff" fontSize="9" fontFamily="Geist Mono" fontWeight="bold">MAIN STG</text>
+          </g>
 
-            return (
-              <React.Fragment key={zid}>
-                {boundaryCoords.length > 0 && (
-                  <Polygon
-                    positions={boundaryCoords}
-                    pathOptions={{
-                      color: zoneColor,
-                      weight: isSelected ? 3.5 : 2,
-                      fillColor: zoneColor,
-                      fillOpacity: isSelected ? 0.35 : 0.18,
-                    }}
-                    eventHandlers={{
-                      click: () => onSelectZone(zid),
-                    }}
-                  >
-                    <Tooltip sticky>
-                      <div className="map-tooltip">
-                        <strong>{zone.name}</strong>
-                        <div>Occupancy: {zone.liveMetrics?.currentVenueOccupancy?.toLocaleString()}</div>
-                        <div>Stress Score: {stressScore}%</div>
-                      </div>
-                    </Tooltip>
+          {/* Gate 1 Girls / VIP East */}
+          <g transform="translate(540, 290)" className="cursor-pointer" onClick={() => onSelectZone('zone-atrium-main')}>
+            <rect width="22" height="40" rx="4" fill="#ffffff" stroke="#0284c7" strokeWidth="1.5" filter="drop-shadow(0 2px 4px rgba(2, 132, 199, 0.15))" />
+            <text x="4" y="24" fill="#0284c7" fontSize="8" fontFamily="Geist Mono" fontWeight="bold">GT 1</text>
+          </g>
 
-                    <Popup>
-                      <div className="popup-card">
-                        <div className="popup-header-row">
-                          <h4 className="popup-title">{zone.name}</h4>
-                          <span className="popup-badge" style={{ backgroundColor: `${zoneColor}25`, color: zoneColor }}>
-                            {zone.liveMetrics?.status?.toUpperCase()}
-                          </span>
-                        </div>
+          {/* The Quad Concourse South */}
+          <g transform="translate(370, 410)" className="cursor-pointer" onClick={() => onSelectZone('zone-quadrangle')}>
+            <rect width="60" height="20" rx="4" fill="#ffffff" stroke="#6366f1" strokeWidth="1.5" filter="drop-shadow(0 2px 4px rgba(99, 102, 241, 0.15))" />
+            <text x="8" y="14" fill="#6366f1" fontSize="9" fontFamily="Geist Mono" fontWeight="bold">THE QUAD</text>
+          </g>
 
-                        <p className="popup-category">{zone.category?.replace(/_/g, ' ').toUpperCase()}</p>
+          {/* Gate 2 Boys West */}
+          <g transform="translate(240, 290)" className="cursor-pointer" onClick={() => onSelectZone('zone-canteen-back')}>
+            <rect width="22" height="40" rx="4" fill="#ffffff" stroke="#d97706" strokeWidth="1.5" filter="drop-shadow(0 2px 4px rgba(217, 119, 6, 0.15))" />
+            <text x="4" y="24" fill="#d97706" fontSize="8" fontFamily="Geist Mono" fontWeight="bold">GT 2</text>
+          </g>
 
-                        <div className="popup-stat-grid">
-                          <div className="popup-stat">
-                            <span className="stat-label">Live Attendees</span>
-                            <span className="stat-val">{zone.liveMetrics?.currentVenueOccupancy?.toLocaleString()}</span>
-                          </div>
-                          <div className="popup-stat">
-                            <span className="stat-label">Total Capacity</span>
-                            <span className="stat-val">{zone.totalCapacity?.venue?.toLocaleString()}</span>
-                          </div>
-                          <div className="popup-stat">
-                            <span className="stat-label">Transit Pressure</span>
-                            <span className="stat-val">{Math.round((zone.liveMetrics?.currentTransitPressure || 0) * 100)}%</span>
-                          </div>
-                          <div className="popup-stat">
-                            <span className="stat-label">Stress Score</span>
-                            <span className="stat-val" style={{ color: zoneColor }}>{stressScore}/100</span>
-                          </div>
-                        </div>
+          {/* Animated Particles */}
+          <circle cx="400" cy="100" r="3" fill="#ef4444">
+            <animate attributeName="cy" from="40" to="150" dur="1.2s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="600" cy="300" r="3" fill="#4cd7f6">
+            <animate attributeName="cx" from="660" to="550" dur="1.8s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="400" cy="480" r="3" fill="#93c5fd">
+            <animate attributeName="cy" from="550" to="440" dur="2.2s" repeatCount="indefinite" />
+          </circle>
+        </svg>
 
-                        {forecastData && (
-                          <div className="popup-forecast-box">
-                            <span className="forecast-tag">PROJECTED (NEXT 60M)</span>
-                            <div className="forecast-row">
-                              <span>Projected Stress:</span>
-                              <strong style={{ color: getStressColor(forecastData.projectedStress) }}>
-                                {forecastData.projectedStress}%
-                              </strong>
-                            </div>
-                            <div className="forecast-row">
-                              <span>Risk Level:</span>
-                              <strong className={`risk-${forecastData.riskLevel}`}>
-                                {forecastData.riskLevel?.toUpperCase()}
-                              </strong>
-                            </div>
-                          </div>
-                        )}
+        {/* Live Sector Callout Chips */}
+        <div className="sector-callout callout-north font-mono">
+          <span className="callout-title">SECTOR 1 (QUAD CONCOURSE CHOKE)</span>
+          <div className="callout-value">
+            <span className="callout-dot bg-error"></span>
+            <span className="text-error font-bold">1,850 OCC (92%)</span>
+          </div>
+        </div>
 
-                        <button
-                          className="popup-focus-btn"
-                          onClick={() => onSelectZone(zid)}
-                        >
-                          Focus Telemetry
-                        </button>
-                      </div>
-                    </Popup>
-                  </Polygon>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </MapContainer>
+        <div className="sector-callout callout-south font-mono">
+          <span className="callout-title">SECTOR 2 (MAIN CONCERT GROUND)</span>
+          <div className="callout-value">
+            <span className="callout-dot bg-cyan"></span>
+            <span className="text-cyan font-bold">5,850 OCC (84%)</span>
+          </div>
+        </div>
+
+        {/* Bottom Legend */}
+        <div className="organizer-map-legend font-mono">
+          <div className="legend-chip">
+            <span className="legend-sq bg-optimal"></span>
+            <span>Optimal (&lt;60%)</span>
+          </div>
+          <div className="legend-chip">
+            <span className="legend-sq bg-heavy"></span>
+            <span>Heavy (60-85%)</span>
+          </div>
+          <div className="legend-chip">
+            <span className="legend-sq bg-choke"></span>
+            <span>Choke (&gt;85%)</span>
+          </div>
+        </div>
       </div>
 
       <style>{`
-        .map-view-wrapper {
-          display: flex;
-          flex-direction: column;
+        .radar-panel-organizer {
           height: 100%;
-          border-radius: var(--radius-md);
+          min-height: 580px;
+          background: rgba(255, 255, 255, 0.94);
+          border: 1px solid rgba(226, 232, 240, 0.85);
+          border-radius: var(--radius-lg);
+          position: relative;
           overflow: hidden;
-        }
-
-        .map-header {
-          padding: 10px 16px;
-          background: rgba(15, 23, 42, 0.85);
-          border-bottom: 1px solid var(--border-subtle);
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          box-shadow: 0 2px 12px rgba(100, 116, 139, 0.06);
+          transition: all 0.2s ease;
+        }
+        .radar-panel-organizer:hover {
+          box-shadow: 0 6px 20px rgba(100, 116, 139, 0.1);
+          border-color: rgba(99, 102, 241, 0.25);
         }
 
-        .map-title-row {
+        .radar-top-hud {
+          position: absolute;
+          top: 14px;
+          left: 16px;
+          right: 16px;
+          z-index: 20;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          flex-wrap: wrap;
-          gap: 8px;
+          pointer-events: none;
         }
 
-        .map-badge {
-          font-size: 0.74rem;
-          font-weight: 700;
-          letter-spacing: 0.06em;
-          color: var(--cyan);
-          background: rgba(6, 182, 212, 0.12);
-          padding: 3px 8px;
-          border-radius: 4px;
-        }
-
-        .map-legend {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-        }
-        .legend-item {
+        .radar-tag {
+          pointer-events: auto;
           display: flex;
           align-items: center;
-          gap: 5px;
-          font-size: 0.72rem;
-          color: var(--text-secondary);
-        }
-        .legend-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: var(--radius-full);
-        }
-        .legend-dot.normal { background: var(--status-normal); }
-        .legend-dot.elevated { background: var(--status-elevated); }
-        .legend-dot.warning { background: var(--status-warning); }
-        .legend-dot.critical { background: var(--status-critical); }
-
-        .layer-toolbar {
-          display: flex;
           gap: 6px;
-          flex-wrap: wrap;
+          background: rgba(255, 255, 255, 0.92);
+          backdrop-filter: blur(14px);
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          padding: 5px 12px;
+          border-radius: 6px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #0f172a;
+          letter-spacing: 0.06em;
+          box-shadow: 0 2px 8px rgba(100, 116, 139, 0.06);
         }
-        .layer-toggle-btn {
+        .pulse-dot-cyan {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #0284c7;
+          box-shadow: 0 0 6px rgba(2, 132, 199, 0.4);
+        }
+
+        .radar-hud-tools {
+          pointer-events: auto;
           display: flex;
           align-items: center;
-          gap: 5px;
-          background: rgba(0, 0, 0, 0.35);
-          border: 1px solid var(--border-subtle);
-          color: var(--text-secondary);
-          padding: 3px 9px;
-          border-radius: var(--radius-full);
-          font-size: 0.72rem;
-          font-weight: 600;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.92);
+          backdrop-filter: blur(14px);
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          padding: 4px 6px;
+          border-radius: 6px;
+          box-shadow: 0 2px 8px rgba(100, 116, 139, 0.06);
+        }
+        .hud-btn {
+          background: transparent;
+          border: none;
+          color: #64748b;
+          font-size: 0.68rem;
+          font-weight: 700;
+          padding: 4px 8px;
+          border-radius: 4px;
           cursor: pointer;
           transition: all 0.15s;
         }
-        .layer-toggle-btn:hover {
-          color: var(--text-primary);
-          border-color: rgba(255, 255, 255, 0.2);
+        .hud-btn.active {
+          background: #e0f2fe;
+          color: #0284c7;
         }
-        .layer-toggle-btn.active {
-          background: rgba(99, 102, 241, 0.2);
-          border-color: var(--primary);
-          color: #ffffff;
-          box-shadow: 0 0 8px var(--primary-glow);
-        }
-
-        .map-canvas-container {
-          flex: 1;
-          min-height: 480px;
-          position: relative;
-        }
-        .leaflet-map-canvas {
-          width: 100%;
-          height: 100%;
-          min-height: 480px;
-          background: #090d16;
-        }
-
-        .popup-card {
-          color: var(--text-primary);
-          font-family: inherit;
-          min-width: 220px;
-          padding: 4px;
-        }
-        .popup-header-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 4px;
-        }
-        .popup-title {
-          font-size: 0.92rem;
-          font-weight: 700;
+        .hud-btn:hover {
           color: #0f172a;
-          margin: 0;
         }
-        .popup-badge {
-          font-size: 0.65rem;
-          font-weight: 700;
-          padding: 2px 6px;
+        .hud-divider {
+          width: 1px;
+          height: 14px;
+          background: #e2e8f0;
+        }
+        .hud-zoom-btn {
+          width: 22px;
+          height: 22px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          color: #0f172a;
           border-radius: 4px;
-        }
-        .popup-category {
-          font-size: 0.7rem;
-          color: #64748b;
-          margin-bottom: 8px;
+          font-weight: bold;
+          font-size: 0.8rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        .popup-stat-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 6px;
-          margin-bottom: 10px;
+        .organizer-canvas-container {
+          flex: 1;
+          background: #f8fafc;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
         }
-        .popup-stat {
-          background: #f1f5f9;
-          padding: 5px;
-          border-radius: 4px;
+        .organizer-radar-svg {
+          width: 90%;
+          height: 90%;
+          transition: transform 0.4s ease;
+        }
+
+        .heat-glow {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(50px);
+          pointer-events: none;
+        }
+        .red-heat-glow {
+          width: 200px;
+          height: 200px;
+          background: rgba(225, 29, 72, 0.12);
+          top: 30px;
+          left: 42%;
+        }
+        .cyan-heat-glow {
+          width: 220px;
+          height: 220px;
+          background: rgba(14, 165, 233, 0.1);
+          bottom: 40px;
+          right: 30%;
+        }
+
+        .sector-callout {
+          position: absolute;
+          padding: 6px 10px;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(14px);
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          border-radius: 6px;
           display: flex;
           flex-direction: column;
+          gap: 2px;
+          pointer-events: none;
+          box-shadow: 0 4px 12px rgba(100, 116, 139, 0.08);
         }
-        .stat-label {
-          font-size: 0.65rem;
-          color: #64748b;
+        .callout-north {
+          top: 70px;
+          left: 40px;
         }
-        .stat-val {
-          font-size: 0.82rem;
-          font-weight: 700;
-          color: #0f172a;
+        .callout-south {
+          bottom: 70px;
+          right: 40px;
         }
-
-        .popup-forecast-box {
-          background: #e2e8f0;
-          padding: 6px;
-          border-radius: 4px;
-          margin-bottom: 8px;
-        }
-        .forecast-tag {
+        .callout-title {
           font-size: 0.62rem;
+          color: #64748b;
           font-weight: 700;
-          color: #475569;
-          display: block;
-          margin-bottom: 2px;
         }
-        .forecast-row {
+        .callout-value {
           display: flex;
-          justify-content: space-between;
-          font-size: 0.75rem;
-          color: #1e293b;
-        }
-
-        .popup-focus-btn {
-          width: 100%;
-          background: #4f46e5;
-          color: #ffffff;
-          border: none;
-          padding: 6px;
-          border-radius: 4px;
-          font-size: 0.78rem;
-          font-weight: 600;
-          cursor: pointer;
-        }
-        .popup-focus-btn:hover {
-          background: #4338ca;
-        }
-
-        .map-tooltip {
-          font-family: inherit;
+          align-items: center;
+          gap: 6px;
           font-size: 0.78rem;
         }
+        .callout-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+        }
+        .bg-error { background: #e11d48; }
+        .bg-cyan { background: #0284c7; }
+
+        .organizer-map-legend {
+          position: absolute;
+          bottom: 14px;
+          left: 16px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          background: rgba(255, 255, 255, 0.94);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(226, 232, 240, 0.85);
+          padding: 6px 12px;
+          border-radius: 6px;
+          font-size: 0.68rem;
+          color: #475569;
+          box-shadow: 0 2px 8px rgba(100, 116, 139, 0.08);
+        }
+        .legend-chip {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .legend-sq {
+          width: 7px;
+          height: 7px;
+          border-radius: 2px;
+        }
+        .bg-optimal { background: #059669; }
+        .bg-heavy { background: #b45309; }
+        .bg-choke { background: #e11d48; }
+
+        .text-error { color: #e11d48; }
+        .text-cyan { color: #0284c7; }
       `}</style>
     </div>
   );

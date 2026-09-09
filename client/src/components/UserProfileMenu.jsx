@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, LogIn, LogOut, ShieldCheck, UserCheck, ChevronDown } from 'lucide-react';
+import { LogIn, LogOut, ShieldCheck, UserCheck, ChevronDown } from 'lucide-react';
 
 export default function UserProfileMenu() {
   const { user, role, logout, promptLogin } = useAuth();
@@ -21,12 +21,12 @@ export default function UserProfileMenu() {
     return (
       <button
         id="auth-signin-btn"
-        className="signin-nav-btn"
+        className="signin-nav-btn font-mono"
         onClick={() => promptLogin()}
         title="Sign in with your CrowdPulse account"
       >
-        <LogIn size={15} />
-        <span>Sign In / Register</span>
+        <LogIn size={14} />
+        <span>Sign In</span>
       </button>
     );
   }
@@ -44,16 +44,17 @@ export default function UserProfileMenu() {
     <div className="user-profile-menu-container" ref={menuRef}>
       <button
         id="user-profile-btn"
-        className={`user-trigger-btn ${isOrganizer ? 'organizer-glow' : 'visitor-glow'}`}
+        className={`user-trigger-btn ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         title="View User Account & Role"
+        aria-expanded={isOpen}
       >
         <div className={`user-avatar ${isOrganizer ? 'organizer' : 'visitor'}`}>
           {initials}
         </div>
         <div className="user-info-text">
-          <span className="user-name">{user.fullName || user.email.split('@')[0]}</span>
-          <span className={`user-role-badge ${isOrganizer ? 'role-organizer' : 'role-visitor'}`}>
+          <span className="user-name font-display">{user.fullName || user.email.split('@')[0]}</span>
+          <span className={`user-role-badge font-mono ${isOrganizer ? 'role-organizer' : 'role-visitor'}`}>
             {isOrganizer ? 'ORGANIZER' : 'VISITOR'}
           </span>
         </div>
@@ -61,13 +62,13 @@ export default function UserProfileMenu() {
       </button>
 
       {isOpen && (
-        <div className="user-dropdown-panel glass-panel">
+        <div className="user-dropdown-panel" role="menu">
           <div className="dropdown-header">
             <div className="dropdown-user-details">
-              <span className="dropdown-full-name">{user.fullName || 'Authorized User'}</span>
-              <span className="dropdown-email">{user.email}</span>
+              <span className="dropdown-full-name font-display">{user.fullName || 'Authorized User'}</span>
+              <span className="dropdown-email font-mono">{user.email}</span>
             </div>
-            <div className="clearance-tag">
+            <div className={`clearance-tag font-mono ${isOrganizer ? 'organizer' : 'visitor'}`}>
               {isOrganizer ? (
                 <>
                   <ShieldCheck size={14} className="text-primary" />
@@ -86,7 +87,7 @@ export default function UserProfileMenu() {
 
           <button
             id="user-logout-btn"
-            className="dropdown-logout-btn"
+            className="dropdown-logout-btn font-mono"
             onClick={() => {
               setIsOpen(false);
               logout();
@@ -102,21 +103,22 @@ export default function UserProfileMenu() {
         .signin-nav-btn {
           display: flex;
           align-items: center;
-          gap: 8px;
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2));
-          border: 1px solid var(--border-active);
-          color: var(--text-primary);
-          padding: 7px 14px;
-          border-radius: var(--radius-full);
-          font-size: 0.84rem;
-          font-weight: 600;
+          gap: 6px;
+          background: #ffffff;
+          border: 1px solid #cbd5e1;
+          color: #0f172a;
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 0.76rem;
+          font-weight: 700;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.15s ease;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
         .signin-nav-btn:hover {
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(6, 182, 212, 0.35));
-          box-shadow: 0 0 15px var(--primary-glow);
-          transform: translateY(-1px);
+          background: #f8fafc;
+          border-color: #94a3b8;
+          color: #0284c7;
         }
 
         .user-profile-menu-container {
@@ -127,42 +129,38 @@ export default function UserProfileMenu() {
           display: flex;
           align-items: center;
           gap: 10px;
-          background: rgba(15, 23, 42, 0.8);
-          border: 1px solid var(--border-subtle);
-          padding: 4px 10px 4px 5px;
-          border-radius: var(--radius-full);
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          padding: 4px 12px 4px 5px;
+          border-radius: 9999px;
           cursor: pointer;
-          transition: all 0.2s;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+          transition: all 0.15s ease;
         }
-        .user-trigger-btn:hover {
-          border-color: rgba(255, 255, 255, 0.2);
-          background: rgba(30, 41, 59, 0.9);
-        }
-        .organizer-glow:hover {
-          border-color: var(--primary);
-          box-shadow: 0 0 12px var(--primary-glow);
-        }
-        .visitor-glow:hover {
-          border-color: var(--cyan);
-          box-shadow: 0 0 12px var(--cyan-glow);
+        .user-trigger-btn:hover,
+        .user-trigger-btn.active {
+          background: #f8fafc;
+          border-color: #cbd5e1;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
         }
 
         .user-avatar {
           width: 32px;
           height: 32px;
-          border-radius: var(--radius-full);
+          border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-weight: 700;
+          font-weight: 800;
           font-size: 0.78rem;
           color: #ffffff;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
         }
         .user-avatar.organizer {
-          background: linear-gradient(135deg, var(--primary), #4f46e5);
+          background: linear-gradient(135deg, #6366f1, #4f46e5);
         }
         .user-avatar.visitor {
-          background: linear-gradient(135deg, var(--cyan), #0284c7);
+          background: linear-gradient(135deg, #0284c7, #0ea5e9);
         }
 
         .user-info-text {
@@ -173,8 +171,8 @@ export default function UserProfileMenu() {
         }
         .user-name {
           font-size: 0.82rem;
-          font-weight: 600;
-          color: var(--text-primary);
+          font-weight: 700;
+          color: #0f172a;
           line-height: 1.1;
           max-width: 120px;
           white-space: nowrap;
@@ -182,36 +180,37 @@ export default function UserProfileMenu() {
           text-overflow: ellipsis;
         }
         .user-role-badge {
-          font-size: 0.65rem;
-          font-weight: 700;
-          letter-spacing: 0.05em;
+          font-size: 0.62rem;
+          font-weight: 800;
+          letter-spacing: 0.06em;
           margin-top: 2px;
         }
         .role-organizer {
-          color: #a5b4fc;
+          color: #4f46e5;
         }
         .role-visitor {
-          color: #67e8f9;
+          color: #0284c7;
         }
 
         .dropdown-arrow {
-          color: var(--text-muted);
-          transition: transform 0.2s;
+          color: #94a3b8;
+          transition: transform 0.2s ease;
         }
         .dropdown-arrow.rotate {
           transform: rotate(180deg);
+          color: #0f172a;
         }
 
         .user-dropdown-panel {
           position: absolute;
-          top: calc(100% + 10px);
+          top: calc(100% + 8px);
           right: 0;
-          width: 250px;
-          background: rgba(15, 23, 42, 0.95);
-          border: 1px solid var(--border-active);
-          border-radius: var(--radius-md);
-          box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.8);
-          padding: 14px;
+          width: 260px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          box-shadow: 0 16px 36px -6px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+          padding: 16px;
           z-index: 1050;
           animation: scaleUp 0.15s ease-out;
         }
@@ -222,32 +221,42 @@ export default function UserProfileMenu() {
           margin-bottom: 8px;
         }
         .dropdown-full-name {
-          font-size: 0.92rem;
-          font-weight: 700;
-          color: var(--text-primary);
+          font-size: 0.95rem;
+          font-weight: 800;
+          color: #0f172a;
         }
         .dropdown-email {
-          font-size: 0.78rem;
-          color: var(--text-muted);
+          font-size: 0.74rem;
+          color: #64748b;
           word-break: break-all;
+          margin-top: 2px;
         }
 
         .clearance-tag {
           display: flex;
           align-items: center;
           gap: 6px;
-          font-size: 0.74rem;
-          color: var(--text-secondary);
-          background: rgba(255, 255, 255, 0.04);
-          padding: 6px 8px;
-          border-radius: var(--radius-sm);
-          margin-top: 4px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 6px 10px;
+          border-radius: 8px;
+          margin-top: 8px;
+        }
+        .clearance-tag.organizer {
+          background: #eef2ff;
+          border: 1px solid #c7d2fe;
+          color: #4338ca;
+        }
+        .clearance-tag.visitor {
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          color: #047857;
         }
 
         .dropdown-divider {
           height: 1px;
-          background: var(--border-subtle);
-          margin: 10px 0;
+          background: #f1f5f9;
+          margin: 12px 0 8px;
         }
 
         .dropdown-logout-btn {
@@ -257,16 +266,17 @@ export default function UserProfileMenu() {
           gap: 8px;
           background: transparent;
           border: none;
-          color: #f87171;
-          padding: 8px;
-          border-radius: var(--radius-sm);
-          font-size: 0.84rem;
-          font-weight: 600;
+          color: #e11d48;
+          padding: 8px 10px;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          font-weight: 700;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.15s ease;
         }
         .dropdown-logout-btn:hover {
-          background: rgba(239, 68, 68, 0.12);
+          background: #fff1f2;
+          color: #be123c;
         }
       `}</style>
     </div>

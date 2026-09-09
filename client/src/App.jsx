@@ -88,18 +88,26 @@ export default function App() {
   const handleUpdateScenario = async (overrides) => {
     try {
       socket.emit('scenario:update', overrides);
-      await updateScenario(overrides);
+      const res = await updateScenario(overrides);
+      const freshState = await fetchState();
+      if (freshState) setSystemState(freshState);
+      return res;
     } catch (err) {
       console.error('Failed to update scenario:', err);
+      throw err;
     }
   };
 
   const handleResetScenario = async () => {
     try {
       socket.emit('scenario:reset');
-      await resetScenario();
+      const res = await resetScenario();
+      const freshState = await fetchState();
+      if (freshState) setSystemState(freshState);
+      return res;
     } catch (err) {
       console.error('Failed to reset scenario:', err);
+      throw err;
     }
   };
 

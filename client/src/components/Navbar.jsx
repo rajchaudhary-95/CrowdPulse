@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, ShieldAlert, Navigation, RefreshCw, Clock } from 'lucide-react';
+import { Activity, Shield, Compass, RefreshCw, Clock, Lock, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import UserProfileMenu from './UserProfileMenu';
 
@@ -11,11 +11,11 @@ export default function Navbar({
   onReseed,
   isReseeding,
 }) {
-  const { isOrganizer, promptLogin } = useAuth();
+  const { isOrganizer, promptLogin, role } = useAuth();
 
   const formattedTime = simulatedTime
-    ? new Date(simulatedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '--:--';
+    ? new Date(simulatedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC'
+    : '14:35 UTC';
 
   const handleOrganizerClick = () => {
     if (!isOrganizer) {
@@ -27,74 +27,78 @@ export default function Navbar({
 
   return (
     <header className="navbar-container">
+      {/* Left: Brand Identity */}
       <div className="navbar-left">
         <div className="brand-badge">
           <div className="brand-logo">
-            <Activity size={22} className="brand-icon" />
+            <Activity size={20} className="brand-icon" />
           </div>
-          <div>
-            <h1 className="brand-title">CrowdPulse <span className="brand-sub">/ OmniVenue</span></h1>
-            <p className="brand-tagline">Mega-Event Orchestration & Visitor Guidance</p>
+          <div className="brand-text-group">
+            <h1 className="brand-title">
+              CrowdPulse <span className="brand-sep">/</span> <span className="brand-sub">OmniVenue</span>
+            </h1>
+            <p className="brand-tagline">MEGA-EVENT ORCHESTRATION &amp; VISITOR GUIDANCE</p>
           </div>
         </div>
       </div>
 
+      {/* Center: View Switcher */}
       <div className="navbar-center">
-        <div className="view-switcher">
+        <nav className="view-switcher-pill" aria-label="Main Navigation">
           <button
             id="view-organizer-btn"
-            className={`switcher-btn ${activeView === 'organizer' ? 'active' : ''}`}
+            className={`switcher-tab ${activeView === 'organizer' ? 'active' : ''}`}
             onClick={handleOrganizerClick}
-            title={isOrganizer ? 'Organizer Command Center' : 'Requires Organizer Login'}
+            title={isOrganizer ? 'Organizer Command Center' : 'Operational Clearance Required'}
           >
-            <ShieldAlert size={16} />
-            Organizer Console
-            {!isOrganizer && <span className="lock-tag">🔒</span>}
+            <Shield size={14} />
+            <span>Organizer Console</span>
+            <Lock size={12} className="lock-icon" />
           </button>
           <button
             id="view-visitor-btn"
-            className={`switcher-btn ${activeView === 'visitor' ? 'active' : ''}`}
+            className={`switcher-tab ${activeView === 'visitor' ? 'active' : ''}`}
             onClick={() => setActiveView('visitor')}
           >
-            <Navigation size={16} />
-            Visitor Companion
+            <Compass size={14} />
+            <span>Visitor Companion</span>
           </button>
-        </div>
+        </nav>
       </div>
 
+      {/* Right: Live Telemetry & Profile */}
       <div className="navbar-right">
         <div className="telemetry-pill">
-          <Clock size={15} className="text-cyan" />
-          <span className="telemetry-label">Simulated:</span>
-          <span className="telemetry-value">{formattedTime}</span>
+          <Clock size={14} className="telemetry-clock-icon" />
+          <span className="telemetry-text font-mono">Simulated: {formattedTime}</span>
         </div>
 
-        <div className="connection-pill">
-          <span className={`status-indicator ${isConnected ? 'online' : 'offline'}`}></span>
-          <span className="connection-text">{isConnected ? 'LIVE' : 'CONNECTING'}</span>
-        </div>
-
-        {isOrganizer && (
+        {/* Reseed only in Organizer view */}
+        {activeView === 'organizer' && (
           <button
             id="reseed-data-btn"
-            className="btn-icon"
-            title="Reset & Reseed Simulation Dataset"
+            className="btn-sync"
+            title="Reseed / Synchronize Data"
             onClick={onReseed}
             disabled={isReseeding}
+            aria-label="Synchronize Data"
           >
-            <RefreshCw size={15} className={isReseeding ? 'spin-anim' : ''} />
+            <RefreshCw size={14} className={isReseeding ? 'spin-anim' : ''} />
           </button>
         )}
 
-        <UserProfileMenu />
+        <div className="profile-badge-wrapper">
+          <UserProfileMenu />
+        </div>
       </div>
 
       <style>{`
         .navbar-container {
           height: var(--nav-height);
-          background: rgba(15, 23, 42, 0.9);
-          backdrop-filter: blur(16px);
-          border-bottom: 1px solid var(--border-subtle);
+          background: rgba(255, 255, 255, 0.88);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(226, 232, 240, 0.85);
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -102,7 +106,9 @@ export default function Navbar({
           position: sticky;
           top: 0;
           z-index: 1000;
+          box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
         }
+
         .navbar-left {
           display: flex;
           align-items: center;
@@ -113,149 +119,149 @@ export default function Navbar({
           gap: 12px;
         }
         .brand-logo {
-          width: 38px;
-          height: 38px;
-          background: linear-gradient(135deg, var(--primary), var(--cyan));
-          border-radius: var(--radius-md);
+          width: 36px;
+          height: 36px;
+          background: linear-gradient(135deg, #818cf8, #38bdf8);
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 0 15px var(--primary-glow);
+          box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
         }
         .brand-icon {
           color: #ffffff;
         }
+        .brand-text-group {
+          display: flex;
+          flex-direction: column;
+        }
         .brand-title {
-          font-size: 1.15rem;
+          font-family: var(--font-display);
+          font-size: 1.05rem;
           font-weight: 700;
-          color: var(--text-primary);
+          color: #0f172a;
           line-height: 1.2;
+          letter-spacing: -0.02em;
+        }
+        .brand-sep {
+          color: #cbd5e1;
+          font-weight: 400;
+          margin: 0 2px;
         }
         .brand-sub {
-          color: var(--cyan);
-          font-weight: 400;
-          font-size: 0.95rem;
+          color: #64748b;
+          font-weight: 600;
         }
         .brand-tagline {
-          font-size: 0.72rem;
-          color: var(--text-muted);
-          letter-spacing: 0.02em;
+          font-family: var(--font-mono);
+          font-size: 0.62rem;
+          font-weight: 600;
+          color: #64748b;
+          letter-spacing: 0.08em;
+          margin-top: 1px;
         }
 
         .navbar-center {
           display: flex;
           align-items: center;
         }
-        .view-switcher {
+        .view-switcher-pill {
           display: flex;
-          background: rgba(0, 0, 0, 0.35);
-          padding: 4px;
+          background: #f1f5f9;
+          padding: 3px;
           border-radius: var(--radius-full);
-          border: 1px solid var(--border-subtle);
+          border: 1px solid rgba(203, 213, 225, 0.6);
         }
-        .switcher-btn {
+        .switcher-tab {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 7px 18px;
+          gap: 6px;
+          padding: 6px 14px;
           border-radius: var(--radius-full);
-          border: none;
+          border: 1px solid transparent;
           background: transparent;
-          color: var(--text-secondary);
-          font-size: 0.85rem;
+          color: #64748b;
+          font-family: var(--font-display);
+          font-size: 0.76rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .switcher-btn:hover {
-          color: var(--text-primary);
+        .switcher-tab:hover {
+          color: #0f172a;
         }
-        .switcher-btn.active {
-          background: linear-gradient(135deg, var(--primary), #4338ca);
-          color: #ffffff;
-          box-shadow: 0 2px 10px var(--primary-glow);
+        .switcher-tab.active {
+          background: #ffffff;
+          border-color: rgba(203, 213, 225, 0.8);
+          color: #0f172a;
+          box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+          font-weight: 700;
         }
-        .lock-tag {
-          font-size: 0.7rem;
+        .lock-icon {
+          opacity: 0.6;
           margin-left: 2px;
         }
 
         .navbar-right {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
         .telemetry-pill {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border-subtle);
+          background: #f0f9ff;
+          border: 1px solid #bae6fd;
           padding: 5px 12px;
           border-radius: var(--radius-full);
-          font-size: 0.8rem;
+          font-size: 0.75rem;
         }
-        .telemetry-label {
-          color: var(--text-muted);
-          display: none;
+        .telemetry-clock-icon {
+          color: #0284c7;
         }
-        @media (min-width: 900px) {
-          .telemetry-label { display: inline; }
-        }
-        .telemetry-value {
-          font-weight: 700;
-          color: var(--cyan);
+        .telemetry-text {
+          color: #0284c7;
+          font-weight: 600;
           font-variant-numeric: tabular-nums;
         }
 
-        .connection-pill {
+        .live-status-pill {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border-subtle);
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
           padding: 5px 10px;
           border-radius: var(--radius-full);
-          font-size: 0.72rem;
+        }
+        .live-text {
+          font-size: 0.7rem;
           font-weight: 700;
+          color: #059669;
           letter-spacing: 0.05em;
         }
-        .status-indicator {
-          width: 7px;
-          height: 7px;
-          border-radius: var(--radius-full);
-        }
-        .status-indicator.online {
-          background-color: var(--status-normal);
-          box-shadow: 0 0 8px var(--status-normal);
-        }
-        .status-indicator.offline {
-          background-color: var(--status-critical);
-          box-shadow: 0 0 8px var(--status-critical);
-        }
-        .connection-text {
-          color: var(--text-secondary);
-        }
 
-        .btn-icon {
+        .btn-sync {
           width: 32px;
           height: 32px;
           border-radius: var(--radius-full);
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid var(--border-subtle);
-          color: var(--text-secondary);
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          color: #64748b;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
           transition: all 0.2s;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
-        .btn-icon:hover {
-          background: rgba(255, 255, 255, 0.1);
-          color: var(--text-primary);
-          border-color: rgba(255, 255, 255, 0.2);
+        .btn-sync:hover {
+          background: #f8fafc;
+          color: #0f172a;
+          border-color: #cbd5e1;
         }
-        .btn-icon:disabled {
+        .btn-sync:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
@@ -265,6 +271,55 @@ export default function Navbar({
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+
+        .profile-badge-wrapper {
+          padding-left: 8px;
+          border-left: 1px solid #e2e8f0;
+        }
+        .user-profile-button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+        }
+        .profile-text-group {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          line-height: 1.1;
+        }
+        .profile-id {
+          font-size: 0.74rem;
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .profile-role-tag {
+          font-size: 0.6rem;
+          font-weight: 700;
+          color: #6366f1;
+          background: #ede9fe;
+          border: 1px solid #ddd6fe;
+          padding: 1px 5px;
+          border-radius: 4px;
+          margin-top: 1px;
+        }
+        .profile-avatar-circle {
+          width: 32px;
+          height: 32px;
+          border-radius: var(--radius-full);
+          background: linear-gradient(135deg, #818cf8, #6366f1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #ffffff;
+          box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);
+        }
+
+        @media (max-width: 800px) {
+          .hidden-sm { display: none; }
+          .telemetry-pill { display: none; }
+          .brand-tagline { display: none; }
         }
       `}</style>
     </header>

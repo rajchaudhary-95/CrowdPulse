@@ -1,52 +1,70 @@
 /* =========================================================
-   CROWDPULSE DESIGN SYSTEM & TOKENS (DARK GLASSMORPHISM)
+   CROWDPULSE / OMNIVENUE DESIGN SYSTEM (LIGHT & PASTEL LUXURY)
    ========================================================= */
 
 :root {
-  /* Color Palette - HSL Tailored Dark Theme */
-  --bg-main: #090d16;
-  --bg-card: rgba(15, 23, 42, 0.78);
-  --bg-card-hover: rgba(30, 41, 59, 0.88);
-  --bg-panel: #0f172a;
-  --bg-translucent: rgba(255, 255, 255, 0.03);
+  /* Color Palette - Elevated Light & Pastel Theme */
+  --bg-main: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --bg-card-hover: rgba(255, 255, 255, 0.98);
+  --bg-card-sub: rgba(248, 250, 252, 0.88);
+  --bg-panel: #ffffff;
+  --bg-translucent: rgba(15, 23, 42, 0.02);
 
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-active: rgba(99, 102, 241, 0.4);
-  --border-glow: rgba(6, 182, 212, 0.3);
+  --border-subtle: rgba(226, 232, 240, 0.85);
+  --border-medium: rgba(203, 213, 225, 0.75);
+  --border-active: rgba(99, 102, 241, 0.45);
+  --border-cyan: rgba(14, 165, 233, 0.35);
 
-  /* Typography Colors */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
+  /* Typography Colors - Deep Slate for Crisp High-Contrast Legibility */
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
   --text-muted: #64748b;
-  --text-inverse: #090d16;
+  --text-dim: #94a3b8;
+  --text-inverse: #ffffff;
 
-  /* Brand Accents */
+  /* Brand Accents - Pastel & Lilac */
   --primary: #6366f1;
-  --primary-glow: rgba(99, 102, 241, 0.35);
-  --cyan: #06b6d4;
-  --cyan-glow: rgba(6, 182, 212, 0.35);
+  --primary-pastel: #ede9fe;
+  --primary-border: #ddd6fe;
+  --primary-glow: rgba(99, 102, 241, 0.15);
 
-  /* Status Colors (Capacity / Stress) */
-  --status-normal: #10b981;
-  --status-normal-bg: rgba(16, 185, 129, 0.12);
-  --status-elevated: #f59e0b;
-  --status-elevated-bg: rgba(245, 158, 11, 0.12);
-  --status-warning: #f97316;
-  --status-warning-bg: rgba(249, 115, 22, 0.12);
-  --status-critical: #ef4444;
-  --status-critical-bg: rgba(239, 68, 68, 0.16);
+  --cyan: #0ea5e9;
+  --cyan-pastel: #e0f2fe;
+  --cyan-bright: #0284c7;
+  --cyan-glow: rgba(14, 165, 233, 0.15);
+
+  /* Pastel Status Colors */
+  --status-normal: #059669;
+  --status-normal-bg: #ecfdf5;
+  --status-normal-border: #a7f3d0;
+
+  --status-elevated: #b45309;
+  --status-elevated-bg: #fffbeb;
+  --status-elevated-border: #fde68a;
+
+  --status-warning: #c2410c;
+  --status-warning-bg: #fff7ed;
+  --status-warning-border: #fed7aa;
+
+  --status-critical: #e11d48;
+  --status-critical-bg: #fff1f2;
+  --status-critical-border: #fecdd3;
 
   /* Shadows & Glass */
-  --glass-blur: blur(16px);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 30px -5px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px var(--primary-glow);
+  --glass-blur: blur(20px);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-md: 0 4px 14px -2px rgba(100, 116, 139, 0.08), 0 2px 6px -1px rgba(100, 116, 139, 0.04);
+  --shadow-lg: 0 12px 30px -4px rgba(100, 116, 139, 0.1), 0 4px 10px -2px rgba(100, 116, 139, 0.05);
+  --shadow-glow: 0 4px 20px rgba(99, 102, 241, 0.12);
 
   /* Layout */
   --nav-height: 64px;
+  --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 }
 
@@ -58,38 +76,48 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg-main);
   background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.10) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.4) 0px, transparent 100%);
+    radial-gradient(circle at 12% 10%, rgba(224, 231, 255, 0.7) 0px, transparent 40%),
+    radial-gradient(circle at 88% 12%, rgba(224, 242, 254, 0.6) 0px, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(255, 228, 230, 0.45) 0px, transparent 45%),
+    radial-gradient(circle at 15% 90%, rgba(209, 250, 229, 0.45) 0px, transparent 45%),
+    radial-gradient(circle at 50% 50%, #f8fafc 0px, transparent 100%);
   background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, .brand-font {
-  font-family: 'Outfit', sans-serif;
-  letter-spacing: -0.02em;
+h1, h2, h3, h4, .brand-font, .font-display {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: -0.025em;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+.font-mono, .font-telemetry {
+  font-family: 'Geist Mono', 'SF Mono', 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 /* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-main);
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(148, 163, 184, 0.4);
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(100, 116, 139, 0.6);
 }
 
 /* Glass Card Utility */
@@ -99,12 +127,13 @@ h1, h2, h3, h4, .brand-font {
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-md);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 }
 
 .glass-panel:hover {
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Badges & Tags */
@@ -112,44 +141,45 @@ h1, h2, h3, h4, .brand-font {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
+  padding: 3px 9px;
   border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  font-family: var(--font-mono);
 }
 
 .badge-normal {
   background: var(--status-normal-bg);
   color: var(--status-normal);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid var(--status-normal-border);
 }
 
 .badge-elevated {
   background: var(--status-elevated-bg);
   color: var(--status-elevated);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid var(--status-elevated-border);
 }
 
 .badge-warning {
   background: var(--status-warning-bg);
   color: var(--status-warning);
-  border: 1px solid rgba(249, 115, 22, 0.3);
+  border: 1px solid var(--status-warning-border);
 }
 
 .badge-critical {
   background: var(--status-critical-bg);
   color: var(--status-critical);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  border: 1px solid var(--status-critical-border);
 }
 
 /* Pulse Dot Animation for Live Heartbeat */
 .pulse-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--status-normal);
+  background: #10b981;
   box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
   animation: pulseGreen 2s infinite;
 }
@@ -159,77 +189,119 @@ h1, h2, h3, h4, .brand-font {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
   }
   70% {
-    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
   }
 }
 
-/* Leaflet Map Dark Theme Overrides */
-.leaflet-container {
-  width: 100%;
-  height: 100%;
-  background: #090d16 !important;
-  font-family: inherit;
-  border-radius: inherit;
-}
-
-.leaflet-tile {
-  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%) saturate(60%) !important;
-}
-
-.leaflet-popup-content-wrapper {
-  background: rgba(15, 23, 42, 0.95) !important;
-  backdrop-filter: blur(12px) !important;
-  color: #f8fafc !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
-}
-
-.leaflet-popup-tip {
-  background: rgba(15, 23, 42, 0.95) !important;
-}
-
 /* Buttons */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), #4f46e5);
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
   color: white;
   border: none;
   padding: 8px 16px;
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 10px var(--primary-glow);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 15px var(--primary-glow);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
 }
 
-.btn-secondary {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+.btn-white {
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  font-weight: 500;
-  font-size: 0.875rem;
+  font-weight: 700;
+  font-size: 0.85rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+}
+
+.btn-white:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.22);
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #f8fafc;
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+/* Leaflet Overrides - Clean Light Tiles & Popups */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #f1f5f9 !important;
+  font-family: inherit;
+  border-radius: inherit;
+}
+
+.leaflet-tile {
+  filter: saturate(110%) brightness(102%) contrast(100%) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(16px) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(100, 116, 139, 0.15) !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+/* Aerospace Footer */
+.app-aerospace-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 18px 24px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 32px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }

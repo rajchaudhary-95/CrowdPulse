@@ -1,218 +1,293 @@
 import React, { useState } from 'react';
-import { Sliders, RotateCcw, Play, Clock, Users, Bus } from 'lucide-react';
+import { Sliders, Play, RotateCcw } from 'lucide-react';
 
 export default function WhatIfDrawer({ whatIfOverrides = {}, onUpdateScenario, onResetScenario }) {
-  const [demandSurge, setDemandSurge] = useState(whatIfOverrides.demandSurgeMultiplier || 1.0);
-  const [eventOffset, setEventOffset] = useState(0); // Offset for main track finals
-  const [shuttleMultiplier, setShuttleMultiplier] = useState(1.0);
+  const [demandSurge, setDemandSurge] = useState(whatIfOverrides.demandSurgeMultiplier || 1.35);
+  const [eventOffset, setEventOffset] = useState(15);
+  const [capacityOverride, setCapacityOverride] = useState('HIGH');
+  const [isSimulating, setIsSimulating] = useState(false);
 
-  const handleApply = () => {
-    onUpdateScenario({
-      demandSurgeMultiplier: parseFloat(demandSurge),
-      eventStartTimeDeltas: {
-        'evt-gold-medal-finals': parseInt(eventOffset, 10),
-      },
-      transitCapacityDeltas: {
-        'edge-shuttle-express': parseFloat(shuttleMultiplier),
-      },
-    });
-  };
-
-  const handleReset = () => {
-    setDemandSurge(1.0);
-    setEventOffset(0);
-    setShuttleMultiplier(1.0);
-    onResetScenario();
+  const handleSimulate = async () => {
+    setIsSimulating(true);
+    if (onUpdateScenario) {
+      await onUpdateScenario({
+        demandSurgeMultiplier: parseFloat(demandSurge),
+        eventStartTimeDeltas: {
+          'evt-alegria-edm-night': parseInt(eventOffset, 10),
+          'evt-alegria-flashmob': parseInt(eventOffset, 10),
+        },
+        transitCapacityDeltas: capacityOverride === 'HIGH'
+          ? { 'edge-depot-maingate': 1.5, 'edge-sports-bypass': 1.6 }
+          : capacityOverride === 'LOW'
+          ? { 'edge-depot-maingate': 0.8 }
+          : {},
+        actionDescription: `Simulated Sandbox: ${demandSurge}x demand surge, +${eventOffset}m egress shift, ${capacityOverride} capacity`,
+      });
+    }
+    setTimeout(() => setIsSimulating(false), 800);
   };
 
   return (
-    <div className="whatif-panel glass-panel">
-      <div className="whatif-header">
-        <div className="whatif-title-wrap">
-          <Sliders size={18} className="text-cyan" />
-          <h3 className="whatif-title">What-If Congestion Simulator</h3>
+    <div className="whatif-dock glass-panel">
+      <div className="whatif-brand-col">
+        <div className="whatif-icon-box">
+          <Sliders size={18} className="text-secondary" />
         </div>
-        <button className="btn-secondary btn-sm" onClick={handleReset} title="Reset sliders to baseline">
-          <RotateCcw size={13} /> Reset
+        <div className="whatif-title-group">
+          <h3 className="whatif-title">What-If Dynamic Sandbox</h3>
+          <span className="whatif-subtitle font-mono">PREDICTIVE CROWD DYNAMICS</span>
+        </div>
+      </div>
+
+      {/* Control 1: Demand Surge */}
+      <div className="whatif-slider-col">
+        <div className="slider-label-row font-mono">
+          <span className="slider-name">DEMAND SURGE</span>
+          <span className="slider-val text-cyan">{Number(demandSurge).toFixed(2)}x</span>
+        </div>
+        <input
+          type="range"
+          min="1.0"
+          max="2.0"
+          step="0.05"
+          value={demandSurge}
+          onChange={(e) => setDemandSurge(e.target.value)}
+          className="dock-slider"
+        />
+        <div className="slider-bounds font-mono">
+          <span>1.0x (Standard)</span>
+          <span>2.0x (Crush)</span>
+        </div>
+      </div>
+
+      {/* Control 2: Schedule Offset */}
+      <div className="whatif-slider-col">
+        <div className="slider-label-row font-mono">
+          <span className="slider-name">SCHEDULE OFFSET</span>
+          <span className="slider-val text-primary">+{eventOffset}m</span>
+        </div>
+        <input
+          type="range"
+          min="-30"
+          max="60"
+          step="5"
+          value={eventOffset}
+          onChange={(e) => setEventOffset(e.target.value)}
+          className="dock-slider"
+        />
+        <div className="slider-bounds font-mono">
+          <span>-30m (Early)</span>
+          <span>+60m (Stagger)</span>
+        </div>
+      </div>
+
+      {/* Control 3: Capacity Override */}
+      <div className="whatif-toggle-col">
+        <div className="slider-label-row font-mono">
+          <span className="slider-name">CAPACITY OVERRIDE</span>
+          <span className="slider-val text-secondary">{capacityOverride} FLOW</span>
+        </div>
+        <div className="segmented-pill font-mono">
+          <button
+            className={`pill-btn ${capacityOverride === 'STD' ? 'active' : ''}`}
+            onClick={() => setCapacityOverride('STD')}
+          >
+            STD
+          </button>
+          <button
+            className={`pill-btn ${capacityOverride === 'HIGH' ? 'active' : ''}`}
+            onClick={() => setCapacityOverride('HIGH')}
+          >
+            HIGH
+          </button>
+          <button
+            className={`pill-btn ${capacityOverride === 'CLEAR' ? 'active' : ''}`}
+            onClick={() => setCapacityOverride('CLEAR')}
+          >
+            CLEAR
+          </button>
+        </div>
+        <span className="toggle-caption font-mono">Turnstiles + Auxiliary Gates</span>
+      </div>
+
+      {/* Action CTA Button */}
+      <div className="whatif-cta-col">
+        <button
+          className="btn-simulate-dispersion font-mono"
+          onClick={handleSimulate}
+          disabled={isSimulating}
+        >
+          <Play size={14} fill="currentColor" />
+          <span>{isSimulating ? 'SIMULATING...' : 'SIMULATE DISPERSION'}</span>
         </button>
       </div>
 
-      <div className="whatif-controls-grid">
-        {/* Slider 1: Global Demand Surge */}
-        <div className="control-group">
-          <div className="control-label-row">
-            <span className="control-label">
-              <Users size={14} className="control-icon" /> Demand Multiplier
-            </span>
-            <span className="control-val-badge">{Number(demandSurge).toFixed(1)}x</span>
-          </div>
-          <input
-            type="range"
-            min="0.5"
-            max="2.5"
-            step="0.1"
-            value={demandSurge}
-            onChange={(e) => {
-              setDemandSurge(e.target.value);
-              onUpdateScenario({ demandSurgeMultiplier: parseFloat(e.target.value) });
-            }}
-            className="slider-input"
-          />
-          <div className="slider-ticks">
-            <span>0.5x (Light)</span>
-            <span>1.0x (Baseline)</span>
-            <span>2.5x (Emergency Surge)</span>
-          </div>
-        </div>
-
-        {/* Slider 2: Event Start Time Offset */}
-        <div className="control-group">
-          <div className="control-label-row">
-            <span className="control-label">
-              <Clock size={14} className="control-icon" /> Track Finals Start Delta
-            </span>
-            <span className="control-val-badge">
-              {eventOffset > 0 ? `+${eventOffset}` : eventOffset} min
-            </span>
-          </div>
-          <input
-            type="range"
-            min="-30"
-            max="60"
-            step="10"
-            value={eventOffset}
-            onChange={(e) => {
-              setEventOffset(e.target.value);
-              onUpdateScenario({
-                eventStartTimeDeltas: { 'evt-gold-medal-finals': parseInt(e.target.value, 10) },
-              });
-            }}
-            className="slider-input"
-          />
-          <div className="slider-ticks">
-            <span>-30m (Early)</span>
-            <span>0m (Scheduled)</span>
-            <span>+60m (Delayed)</span>
-          </div>
-        </div>
-
-        {/* Slider 3: Shuttle Capacity Boost */}
-        <div className="control-group">
-          <div className="control-label-row">
-            <span className="control-label">
-              <Bus size={14} className="control-icon" /> Electric Shuttle Fleet
-            </span>
-            <span className="control-val-badge">{Number(shuttleMultiplier).toFixed(1)}x</span>
-          </div>
-          <input
-            type="range"
-            min="0.5"
-            max="2.0"
-            step="0.1"
-            value={shuttleMultiplier}
-            onChange={(e) => {
-              setShuttleMultiplier(e.target.value);
-              onUpdateScenario({
-                transitCapacityDeltas: { 'edge-shuttle-express': parseFloat(e.target.value) },
-              });
-            }}
-            className="slider-input"
-          />
-          <div className="slider-ticks">
-            <span>0.5x (Fleet Down)</span>
-            <span>1.0x (Standard)</span>
-            <span>2.0x (Max Fleet)</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="whatif-footer">
-        <span className="whatif-hint">
-          &bull; Drag sliders to simulate demand shocks. The Linear Programming solver instantly reallocates shuttles and re-evaluates breach thresholds.
-        </span>
-      </div>
-
       <style>{`
-        .whatif-panel {
-          padding: 16px 20px;
-          margin-top: 16px;
-        }
-        .whatif-header {
+        .whatif-dock {
+          background: rgba(255, 255, 255, 0.94);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(226, 232, 240, 0.85);
+          border-radius: var(--radius-lg);
+          padding: 16px 22px;
           display: flex;
+          align-items: center;
           justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
+          gap: 24px;
+          flex-wrap: wrap;
+          box-shadow: 0 4px 20px rgba(100, 116, 139, 0.08);
+          margin-top: 8px;
+          transition: all 0.2s ease;
         }
-        .whatif-title-wrap {
+        .whatif-dock:hover {
+          border-color: rgba(99, 102, 241, 0.25);
+          box-shadow: 0 6px 24px rgba(100, 116, 139, 0.12);
+        }
+
+        .whatif-brand-col {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
+          min-width: 210px;
+        }
+        .whatif-icon-box {
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .whatif-title {
-          font-size: 1rem;
+          font-family: var(--font-display);
+          font-size: 0.98rem;
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .whatif-subtitle {
+          font-size: 0.62rem;
+          color: #64748b;
+          letter-spacing: 0.08em;
           font-weight: 700;
         }
-        .btn-sm {
-          padding: 5px 10px;
-          font-size: 0.75rem;
-        }
-        .whatif-controls-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 20px;
-        }
-        .control-group {
+
+        .whatif-slider-col {
+          flex: 1;
+          min-width: 170px;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 4px;
         }
-        .control-label-row {
+        .slider-label-row {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-        }
-        .control-label {
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: var(--text-primary);
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .control-icon {
-          color: var(--cyan);
-        }
-        .control-val-badge {
-          font-family: monospace;
-          font-size: 0.825rem;
+          font-size: 0.68rem;
           font-weight: 700;
-          color: var(--cyan);
-          background: rgba(6, 182, 212, 0.1);
-          border: 1px solid rgba(6, 182, 212, 0.3);
-          padding: 2px 8px;
-          border-radius: 6px;
         }
-        .slider-input {
+        .slider-name {
+          color: #64748b;
+        }
+        .slider-val {
+          font-weight: 800;
+        }
+
+        .dock-slider {
+          -webkit-appearance: none;
+          appearance: none;
           width: 100%;
-          accent-color: var(--primary);
-          cursor: pointer;
+          height: 5px;
+          border-radius: 3px;
+          background: #e2e8f0;
+          outline: none;
         }
-        .slider-ticks {
+        .dock-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 15px;
+          height: 15px;
+          border-radius: 50%;
+          background: #6366f1;
+          cursor: pointer;
+          box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+          transition: transform 0.1s ease;
+        }
+        .dock-slider::-webkit-slider-thumb:hover {
+          transform: scale(1.15);
+        }
+
+        .slider-bounds {
           display: flex;
           justify-content: space-between;
-          font-size: 0.65rem;
-          color: var(--text-muted);
+          font-size: 0.6rem;
+          color: #94a3b8;
         }
-        .whatif-footer {
-          margin-top: 12px;
-          padding-top: 10px;
-          border-top: 1px solid var(--border-subtle);
+
+        .whatif-toggle-col {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          min-width: 160px;
         }
-        .whatif-hint {
-          font-size: 0.725rem;
-          color: var(--text-muted);
-          font-style: italic;
+        .segmented-pill {
+          display: flex;
+          background: #f1f5f9;
+          padding: 2px;
+          border-radius: 6px;
+          border: 1px solid #e2e8f0;
         }
+        .pill-btn {
+          flex: 1;
+          padding: 4px 8px;
+          font-size: 0.68rem;
+          font-weight: 700;
+          background: transparent;
+          border: none;
+          color: #64748b;
+          cursor: pointer;
+          border-radius: 4px;
+          transition: all 0.15s;
+        }
+        .pill-btn.active {
+          background: #ffffff;
+          color: #0f172a;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+        }
+        .toggle-caption {
+          font-size: 0.6rem;
+          color: #64748b;
+        }
+
+        .whatif-cta-col {
+          display: flex;
+          align-items: center;
+        }
+        .btn-simulate-dispersion {
+          background: #0f172a;
+          color: #ffffff;
+          border: none;
+          padding: 10px 18px;
+          border-radius: 6px;
+          font-size: 0.76rem;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.15s;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+        }
+        .btn-simulate-dispersion:hover {
+          background: #1e293b;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.22);
+        }
+
+        .text-cyan { color: #0284c7; }
+        .text-primary { color: #6366f1; }
+        .text-secondary { color: #0284c7; }
       `}</style>
     </div>
   );

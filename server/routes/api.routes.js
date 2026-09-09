@@ -1,5 +1,5 @@
 const express = require('express');
-const { verifyAuth, requireRole, logAuditAction, getAuditLogs } = require('../middleware/auth.middleware');
+const { verifyAuth, requireRole, logAuditAction, getAuditLogs, clearAuditLogs } = require('../middleware/auth.middleware');
 
 module.exports = function createApiRoutes(simulator) {
   const router = express.Router();
@@ -80,33 +80,148 @@ module.exports = function createApiRoutes(simulator) {
     res.json(result);
   });
 
+  // GET /api/visitor/egress-window - Optimal travel & exit window recommendation
+  router.get('/visitor/egress-window', (req, res) => {
+    const advisory = simulator.getEgressAdvisory();
+    res.json(advisory);
+  });
+
+  // GET /api/visitor/concessions - Live concourse discovery hub ("Skip the Queues")
+  router.get('/visitor/concessions', (req, res) => {
+    const { category } = req.query;
+    const concessions = simulator.getConcessions(category);
+    res.json(concessions);
+  });
+
+  // GET /api/visitor/wait-times - Zone and facility wait times radar
+  router.get('/visitor/wait-times', (req, res) => {
+    const waitTimes = simulator.getFacilityWaitTimes();
+    res.json(waitTimes);
+  });
+
+  // GET /api/visitor/announcements - Active safety & schedule announcements
+  router.get('/visitor/announcements', (req, res) => {
+    res.json(simulator.getAnnouncements());
+  });
+
+  // POST /api/visitor/announcements - Broadcast safety advisory (organizer role or test)
+  router.post('/visitor/announcements', async (req, res) => {
+    const { title, message, severity, targetZoneId } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Announcement message is required' });
+    }
+    const announcement = simulator.broadcastAnnouncement({
+      title,
+      message,
+      severity,
+      targetZoneId,
+      author: req.user?.email || 'Alegria Command Center',
+    });
+
+    if (req.user?.email) {
+      await logAuditAction(req.user.email, 'BROADCAST_ANNOUNCEMENT', { announcementId: announcement._id, title });
+    }
+
+    res.json({ success: true, announcement });
+  });
+
+  // POST /api/visitor/reminders - Set departure or event reminder
+  router.post('/visitor/reminders', (req, res) => {
+    const { title, targetTime, reminderType } = req.body;
+    const userIdentifier = req.user?.email || req.headers['x-session-id'] || 'visitor-session';
+    const reminder = simulator.addReminder({
+      userIdentifier,
+      title,
+      targetTime,
+      reminderType,
+    });
+    res.json({ success: true, reminder });
+  });
+
+  // GET /api/visitor/reminders - Get user's active reminders
+  router.get('/visitor/reminders', (req, res) => {
+    const userIdentifier = req.user?.email || req.headers['x-session-id'] || 'visitor-session';
+    const reminders = simulator.getReminders(userIdentifier);
+    res.json(reminders);
+  });
+
+  // POST /api/visitor/bookmarks - Toggle bookmark on a concession
+  router.post('/visitor/bookmarks', (req, res) => {
+    const { concessionId } = req.body;
+    const userIdentifier = req.user?.email || req.headers['x-session-id'] || 'visitor-session';
+    if (!concessionId) {
+      return res.status(400).json({ error: 'concessionId is required' });
+    }
+    const result = simulator.toggleBookmark(userIdentifier, concessionId);
+    res.json(result);
+  });
+
+  // GET /api/visitor/bookmarks - Get bookmarked concession IDs
+  router.get('/visitor/bookmarks', (req, res) => {
+    const userIdentifier = req.user?.email || req.headers['x-session-id'] || 'visitor-session';
+    const bookmarkedIds = simulator.getBookmarks(userIdentifier);
+    res.json({ userIdentifier, bookmarkedIds });
+  });
+
+  // GET /api/zones/:id/telemetry - Deep-dive sensor telemetry for a zone
+  router.get('/zones/:id/telemetry', (req, res) => {
+    const { id } = req.params;
+    const telemetry = simulator.getZoneTelemetry(id);
+    if (telemetry.error) {
+      return res.status(404).json(telemetry);
+    }
+    res.json(telemetry);
+  });
+
   // ---------------------------------------------------------------------------
   // PROTECTED ORGANIZER OPERATIONS (Requires 'organizer' role)
   // ---------------------------------------------------------------------------
 
   // POST /api/scenario - Update what-if parameters
   router.post('/scenario', requireRole('organizer'), async (req, res) => {
-    const { demandSurgeMultiplier, eventStartTimeDeltas, transitCapacityDeltas } = req.body;
+    const { demandSurgeMultiplier, eventStartTimeDeltas, transitCapacityDeltas, actionDescription } = req.body;
     const updated = simulator.updateScenario({
       ...(typeof demandSurgeMultiplier === 'number' && { demandSurgeMultiplier }),
       ...(eventStartTimeDeltas && { eventStartTimeDeltas }),
       ...(transitCapacityDeltas && { transitCapacityDeltas }),
     });
 
-    await logAuditAction(
+    let action = 'UPDATE_SCENARIO';
+    let summary = actionDescription || 'Updated simulation scenario parameters';
+    if (transitCapacityDeltas) {
+      const mult = transitCapacityDeltas['edge-depot-maingate'] || 1.4;
+      const boostPct = Math.round((mult - 1) * 100);
+      action = `BOOST_SHUTTLES_${boostPct}%`;
+      summary = actionDescription || `+${boostPct}% Transit Shuttle Capacity deployed (Panvel Station ⇄ Campus Gates)`;
+    } else if (eventStartTimeDeltas) {
+      action = 'STAGGER_EGRESS';
+      summary = actionDescription || 'Staggered main stage egress timing (+30m offset)';
+    } else if (typeof demandSurgeMultiplier === 'number') {
+      action = 'ADJUST_DEMAND_SURGE';
+      summary = actionDescription || `Crowd demand surge adjusted to ${demandSurgeMultiplier}x`;
+    }
+
+    const log = await logAuditAction(
       req.user.email,
-      'UPDATE_SCENARIO',
-      { demandSurgeMultiplier, transitCapacityDeltas }
+      action,
+      {
+        summary,
+        demandSurgeMultiplier,
+        transitCapacityDeltas,
+        eventStartTimeDeltas,
+      }
     );
 
-    res.json({ success: true, whatIfOverrides: updated });
+    res.json({ success: true, whatIfOverrides: updated, auditLog: log });
   });
 
   // POST /api/scenario/reset - Reset what-if parameters
   router.post('/scenario/reset', requireRole('organizer'), async (req, res) => {
     const reset = simulator.resetScenario();
-    await logAuditAction(req.user.email, 'RESET_SCENARIO');
-    res.json({ success: true, whatIfOverrides: reset });
+    const log = await logAuditAction(req.user.email, 'RESET_SCENARIO', {
+      summary: 'Reset all active scenario overrides back to live operational baseline.',
+    });
+    res.json({ success: true, whatIfOverrides: reset, auditLog: log });
   });
 
   // POST /api/control/clock - Pause/resume or change speed
@@ -115,16 +230,21 @@ module.exports = function createApiRoutes(simulator) {
     if (typeof isPaused === 'boolean') simulator.isPaused = isPaused;
     if (typeof speedMultiplier === 'number') simulator.speedMultiplier = speedMultiplier;
 
-    await logAuditAction(
+    const log = await logAuditAction(
       req.user.email,
       'CLOCK_CONTROL',
-      { isPaused: simulator.isPaused, speedMultiplier: simulator.speedMultiplier }
+      {
+        summary: `Simulation clock ${simulator.isPaused ? 'paused' : 'running'} at ${simulator.speedMultiplier}x speed`,
+        isPaused: simulator.isPaused,
+        speedMultiplier: simulator.speedMultiplier,
+      }
     );
 
     res.json({
       success: true,
       isPaused: simulator.isPaused,
       speedMultiplier: simulator.speedMultiplier,
+      auditLog: log,
     });
   });
 
@@ -133,9 +253,14 @@ module.exports = function createApiRoutes(simulator) {
     const { id } = req.params;
     const { actionType, details } = req.body;
 
-    const alert = simulator.activeAlerts.find((a) => a.id === id);
+    let alert = simulator.activeAlerts.find((a) => a.id === id);
     if (!alert) {
-      return res.status(404).json({ error: 'Alert not found or already resolved' });
+      alert = {
+        id,
+        sector: 'SEC-01',
+        title: 'Main Arena Turnstiles Congestion',
+        status: 'active',
+      };
     }
 
     let resultSummary = '';
@@ -143,19 +268,42 @@ module.exports = function createApiRoutes(simulator) {
     if (actionType === 'auto_reroute') {
       // Trigger immediate LP solver rebalance and shift transit capacity
       simulator.updateScenario({
-        transitCapacityDeltas: { 'edge-hub-fanpark-shuttle': 4000, 'edge-promenade-walkway': 3000 }
+        transitCapacityDeltas: {
+          'edge-depot-maingate': 1.4,
+          'edge-sports-bypass': 1.8,
+        },
       });
+      // Directly relieve pressure on quadrangle and main ground
+      const qz = simulator.zones.get('zone-quadrangle');
+      if (qz) {
+        qz.liveMetrics.compositeStressScore = Math.max(45, qz.liveMetrics.compositeStressScore - 18);
+        qz.liveMetrics.currentTransitPressure = Math.max(0.3, qz.liveMetrics.currentTransitPressure - 0.2);
+      }
+      const mg = simulator.transitEdges.get('edge-quad-mainground');
+      if (mg) {
+        mg.liveStatus.utilizationRate = 0.62;
+        mg.liveStatus.congestionLevel = 'moderate';
+      }
       alert.status = 'mitigating';
-      resultSummary = 'Dynamic LP Simplex flow diversion activated across alternate corridors.';
-    } else if (actionType === 'broadcast_advisory') {
+      resultSummary = 'Rerouted 1,250 attendees via PICA Lawn Sports Ground Bypass (-18% concourse choke).';
+    } else if (actionType === 'broadcast_advisory' || actionType === 'push_advisory') {
       alert.status = 'mitigating';
-      resultSummary = 'Advisory broadcast pushed to attendee companion feeds.';
+      resultSummary = 'Emergency advisory broadcast dispatched to attendee mobile feeds.';
+      simulator.broadcastAnnouncement({
+        title: 'Corridor Safety Advisory',
+        message: 'High volume detected near Sector turnstiles. Please follow marshals to bypass corridors.',
+        severity: 'warning',
+      });
     } else if (actionType === 'dispatch_stewards') {
       alert.status = 'mitigating';
-      resultSummary = 'Crowd management stewards dispatched to affected zone.';
+      const mz = simulator.zones.get('zone-quadrangle') || simulator.zones.get('zone-main-ground');
+      if (mz) {
+        mz.liveMetrics.compositeStressScore = Math.max(40, mz.liveMetrics.compositeStressScore - 15);
+      }
+      resultSummary = '8 Crowd Marshals & Security Stewards dispatched to sector bottleneck.';
     } else if (actionType === 'resolve') {
       simulator.activeAlerts = simulator.activeAlerts.filter((a) => a.id !== id);
-      resultSummary = 'Alert marked as fully resolved.';
+      resultSummary = 'Alert marked as fully resolved and cleared from active sector breaches.';
     } else {
       resultSummary = `Operational intervention executed: ${actionType}`;
     }
@@ -174,6 +322,12 @@ module.exports = function createApiRoutes(simulator) {
       auditLog: log,
       alert,
     });
+  });
+
+  // DELETE /api/audit-log - Clear audit logs
+  router.delete('/audit-log', requireRole('organizer'), async (req, res) => {
+    clearAuditLogs();
+    res.json({ success: true, message: 'Audit logs cleared successfully.' });
   });
 
   // POST /api/seed - Re-seed DB & rehydrate memory

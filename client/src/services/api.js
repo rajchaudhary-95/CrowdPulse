@@ -96,3 +96,102 @@ export async function reseedDatabase() {
   }
   return res.json();
 }
+
+export async function fetchEgressWindow() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/visitor/egress-window`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch egress window');
+  return res.json();
+}
+
+export async function fetchConcessions(category = 'all') {
+  const headers = await getAuthHeaders();
+  const url = category && category !== 'all'
+    ? `${API_BASE}/visitor/concessions?category=${encodeURIComponent(category)}`
+    : `${API_BASE}/visitor/concessions`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error('Failed to fetch concessions');
+  return res.json();
+}
+
+export async function fetchWaitTimes() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/visitor/wait-times`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch wait times');
+  return res.json();
+}
+
+export async function fetchAnnouncements() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/visitor/announcements`, { headers });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function broadcastAnnouncement(data) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/visitor/announcements`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to broadcast announcement');
+  return res.json();
+}
+
+export async function fetchZoneTelemetry(zoneId) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/zones/${encodeURIComponent(zoneId)}/telemetry`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch zone telemetry');
+  return res.json();
+}
+
+export async function setReminder(data) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/visitor/reminders`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to set reminder');
+  return res.json();
+}
+
+export async function fetchReminders() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/visitor/reminders`, { headers });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function toggleBookmark(concessionId) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/visitor/bookmarks`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ concessionId }),
+  });
+  if (!res.ok) throw new Error('Failed to toggle bookmark');
+  return res.json();
+}
+
+export async function fetchBookmarks() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/visitor/bookmarks`, { headers });
+  if (!res.ok) return { bookmarkedIds: [] };
+  return res.json();
+}
+
+
+
+export async function clearAuditLogs() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/audit-log`, {
+    method: 'DELETE',
+    headers,
+  });
+  if (!res.ok) throw new Error('Failed to clear audit logs');
+  return res.json();
+}
+
+

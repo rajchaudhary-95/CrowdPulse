@@ -127,9 +127,15 @@ function getAuditLogs() {
   return inMemoryAuditLogs;
 }
 
+function clearAuditLogs() {
+  inMemoryAuditLogs.length = 0;
+  return true;
+}
+
 module.exports = {
   verifyAuth,
   requireRole,
   logAuditAction,
   getAuditLogs,
+  clearAuditLogs,
 };

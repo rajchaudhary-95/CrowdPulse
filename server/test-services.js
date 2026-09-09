@@ -36,8 +36,9 @@ const forecastResult = forecastCrowdPressure({
 });
 
 assert(forecastResult.zoneForecasts, 'Forecast must return zoneForecasts dictionary');
-assert(forecastResult.zoneForecasts['zone-main-arena'], 'Main arena forecast must exist');
-console.log(`   ✅ Main arena projected stress: ${forecastResult.zoneForecasts['zone-main-arena'].projectedStress}% (Risk: ${forecastResult.zoneForecasts['zone-main-arena'].riskLevel})`);
+const mainZoneForecast = forecastResult.zoneForecasts['zone-main-ground'] || forecastResult.zoneForecasts['zone-main-arena'];
+assert(mainZoneForecast, 'Main ground/arena forecast must exist');
+console.log(`   ✅ Main arena/ground projected stress: ${mainZoneForecast.projectedStress}% (Risk: ${mainZoneForecast.riskLevel})`);
 console.log(`   ✅ System average projected stress: ${forecastResult.systemProjectedStress}%`);
 
 // Test 3: Optimization Service (LP Redistribution)

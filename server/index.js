@@ -75,6 +75,40 @@ async function bootstrap(customPort = null) {
       }
     });
 
+    // Visitor Egress Window Request
+    socket.on('visitor:requestEgress', () => {
+      socket.emit('visitor:egressResponse', simulator.getEgressAdvisory());
+    });
+
+    // Visitor Concessions / POI Request
+    socket.on('visitor:requestConcessions', (data) => {
+      const { category } = data || {};
+      socket.emit('visitor:concessionsResponse', simulator.getConcessions(category));
+    });
+
+    // Visitor Facility Wait Times Request
+    socket.on('visitor:requestWaitTimes', () => {
+      socket.emit('visitor:waitTimesResponse', simulator.getFacilityWaitTimes());
+    });
+
+    // Organizer Broadcast Advisory
+    socket.on('organizer:broadcast', (data) => {
+      if (data && data.message) {
+        const announcement = simulator.broadcastAnnouncement(data);
+        io.emit('visitor:broadcastAlert', announcement);
+      }
+    });
+
+    // Organizer Scenario Updates
+    socket.on('scenario:update', (data) => {
+      simulator.updateScenario(data);
+    });
+
+    // Organizer Scenario Reset
+    socket.on('scenario:reset', () => {
+      simulator.resetScenario();
+    });
+
     socket.on('disconnect', () => {
       console.log(`[Socket.io] Client disconnected: ${socket.id}`);
     });

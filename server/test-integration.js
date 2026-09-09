@@ -58,12 +58,85 @@ async function testIntegration() {
 
     // 5. Test Visitor Route Guidance: GET /api/visitor/route
     console.log('\n5. Testing GET /api/visitor/route...');
-    const routeRes = await fetch(`${baseUrl}/visitor/route?from=zone-main-arena&to=zone-transit-hub&preference=least_crowded`);
+    const fromZ = simulator.zones.has('zone-main-ground') ? 'zone-main-ground' : 'zone-main-arena';
+    const toZ = simulator.zones.has('zone-quadrangle') ? 'zone-quadrangle' : 'zone-transit-hub';
+    const routeRes = await fetch(`${baseUrl}/visitor/route?from=${fromZ}&to=${toZ}&preference=least_crowded`);
     const routeData = await routeRes.json();
     console.log(`   ✅ Route guidance received: ${routeData.primaryRoute.edgeName} (${routeData.primaryRoute.estimatedMinutes} min, ${routeData.primaryRoute.crowdednessRating})`);
     if (routeData.alternateRecommendation) {
       console.log(`      Alternate guidance: "${routeData.alternateRecommendation.reason}"`);
     }
+
+    // 6. Test Visitor Egress Window
+    console.log('\n6. Testing GET /api/visitor/egress-window...');
+    const egressRes = await fetch(`${baseUrl}/visitor/egress-window`);
+    const egressData = await egressRes.json();
+    console.log(`   ✅ Egress Advisory: "${egressData.windowStatus}" (Target: ${egressData.recommendedExitTarget}, Extra delay if late: ${egressData.estimatedExtraDelayMinutes})`);
+
+    // 7. Test Concessions Discovery
+    console.log('\n7. Testing GET /api/visitor/concessions...');
+    const concessionsRes = await fetch(`${baseUrl}/visitor/concessions?category=food`);
+    const concessionsData = await concessionsRes.json();
+    console.log(`   ✅ Concessions loaded: ${concessionsData.length} food POIs found (e.g. ${concessionsData[0]?.name}, Wait: ${concessionsData[0]?.liveWaitMinutes}m)`);
+
+    // 8. Test Facility Wait Times
+    console.log('\n8. Testing GET /api/visitor/wait-times...');
+    const waitTimesRes = await fetch(`${baseUrl}/visitor/wait-times`);
+    const waitTimesData = await waitTimesRes.json();
+    console.log(`   ✅ Facility Wait Times loaded: ${waitTimesData.length} checkpoints tracked (e.g. ${waitTimesData[0]?.name})`);
+
+    // 9. Test Announcements Broadcast & Fetch
+    console.log('\n9. Testing POST & GET /api/visitor/announcements...');
+    const postAnnounce = await fetch(`${baseUrl}/visitor/announcements`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer dev-organizer-token',
+      },
+      body: JSON.stringify({
+        title: 'Gate 2 Quick Queue',
+        message: 'Boys entry queue at Gate 2 is under 4 minutes. Proceed now.',
+        severity: 'info',
+        targetZoneId: 'zone-canteen-back',
+      }),
+    });
+    const announceResult = await postAnnounce.json();
+    console.log(`   ✅ Announcement created: "${announceResult.announcement?.title}"`);
+    const getAnnounce = await fetch(`${baseUrl}/visitor/announcements`);
+    const allAnnouncements = await getAnnounce.json();
+    console.log(`   ✅ Announcements list fetched: ${allAnnouncements.length} alerts active`);
+
+    // 10. Test Reminders
+    console.log('\n10. Testing POST & GET /api/visitor/reminders...');
+    await fetch(`${baseUrl}/visitor/reminders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reminderType: 'egress',
+        targetTime: '22:15',
+        title: 'Alegria EDM Exit Window',
+      }),
+    });
+    const remindersRes = await fetch(`${baseUrl}/visitor/reminders`);
+    const remindersData = await remindersRes.json();
+    console.log(`   ✅ Reminders loaded: ${remindersData.length} active reminders`);
+
+    // 11. Test Bookmarks
+    console.log('\n11. Testing POST & GET /api/visitor/bookmarks...');
+    await fetch(`${baseUrl}/visitor/bookmarks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ concessionId: 'poi-canteen-main' }),
+    });
+    const bookmarksRes = await fetch(`${baseUrl}/visitor/bookmarks`);
+    const bookmarksData = await bookmarksRes.json();
+    console.log(`   ✅ Bookmarks loaded: ${bookmarksData.bookmarkedIds?.length || 0} saved POIs`);
+
+    // 12. Test Zone Telemetry
+    console.log('\n12. Testing GET /api/zones/:id/telemetry...');
+    const telemetryRes = await fetch(`${baseUrl}/zones/zone-quadrangle/telemetry`);
+    const telemetryData = await telemetryRes.json();
+    console.log(`   ✅ Zone Telemetry for ${telemetryData.name}: Occupancy=${telemetryData.occupancy?.current}, Stress=${telemetryData.compositeStress?.score}%, Sensors Online=${telemetryData.sensorHealth?.opticalCamerasActive}`);
 
     console.log('\n==================================================');
     console.log('🎉 ALL INTEGRATION API TESTS PASSED SUCCESSFULLY!');
